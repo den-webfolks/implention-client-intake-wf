@@ -773,6 +773,18 @@
   }
   .ir-main { min-width: 0; }
 
+  /* Bucket show/hide toggle — pinned to the right of the tab bar; identical style in both states */
+  .bucket-toggle {
+    display: inline-flex; align-items: center; gap: 7px; margin-left: auto; align-self: center;
+    font: 600 11px 'Inter', sans-serif; color: var(--accent);
+    background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px;
+    padding: 7px 13px; cursor: pointer; transition: all .14s;
+  }
+  .bucket-toggle::before { content: "\2630"; font-size: 12px; }
+  .bucket-toggle:hover { background: var(--accent); color: #fff; }
+  .ir-layout.bucket-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .ir-layout.bucket-collapsed .ir-side { display: none; }
+
   /* ---- Report header / version controls ---- */
   .ir-titlebar { margin-bottom: 18px; }
   .ir-titlebar h1 { font-size: 38px; }
@@ -1121,14 +1133,14 @@
   .uom-item .st { margin-top: 7px; }
 
   /* finding cards */
-  .finding { border: 1px solid var(--line); border-radius: 11px; padding: 15px 17px; margin-bottom: 11px; background: var(--card); border-left: 3px solid var(--line-strong); }
+  .finding { position: relative; border: 1px solid var(--line); border-radius: 11px; padding: 15px 17px; margin-bottom: 11px; background: var(--card); border-left: 3px solid var(--line-strong); }
   .finding.sev-critical { border-left-color: var(--bad); }
   .finding.sev-high { border-left-color: var(--warn); }
   .finding.sev-medium { border-left-color: #c8a93e; }
   .finding.sev-low { border-left-color: var(--line-strong); }
   .finding.is-resolved { opacity: .55; } .finding.is-resolved .ftitle { text-decoration: line-through; }
   .finding.is-ignored { opacity: .5; }
-  .finding-head { display: flex; align-items: flex-start; gap: 12px; }
+  .finding-head { display: flex; align-items: flex-start; gap: 12px; padding-right: 160px; }
   .finding-head .ftitle { font: 600 15px 'Inter'; color: var(--ink); flex: 1; line-height: 1.3; }
   .finding-head .fimpact { font: 600 12px 'Inter'; color: var(--bad); white-space: nowrap; background: var(--bad-soft); padding: 4px 9px; border-radius: 6px; }
   .finding .fdesc { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 10px 0; }
@@ -1377,7 +1389,7 @@
   .bi-gain { margin-left: auto; font: 700 11px 'Inter', sans-serif; color: #fff; background: var(--ok); padding: 2px 8px; border-radius: 6px; letter-spacing: 0; }
 
   /* Findings = primary decision area (strongest emphasis) */
-  .ablock.primary { background: var(--paper); border: 1px solid var(--line-strong); border-radius: 12px; padding: 18px 20px; margin-top: 24px; }
+  .ablock.primary { margin-top: 24px; }
   .ablock.primary > h5 { color: var(--ink); font-size: 11.5px; }
   .ablock.primary > h5 .pin { width: 6px; height: 6px; background: var(--accent); }
   .ablock.primary > h5::after { content: "Primary decision area"; margin-left: auto; font: 600 9px 'Inter', sans-serif; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); background: var(--accent-soft); padding: 3px 9px; border-radius: 999px; }
@@ -1433,8 +1445,8 @@
   /* ====================================================================== */
   /* FINDING ACTIONS — review & triage (Create Client Request / Ignore)     */
   /* ====================================================================== */
-  .finding-actions { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
-  .finding-actions .fa.req { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; padding: 9px 17px; font-size: 12px; }
+  .finding-actions { position: absolute; top: 13px; right: 15px; display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+  .finding-actions .fa.req { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; padding: 7px 14px; font-size: 11.5px; }
   .finding-actions .fa.req:hover { background: var(--ink); border-color: var(--ink); color: #fff; }
   .finding-actions .fa.req.queued { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
   .finding-actions .fa.ignore { background: transparent; color: var(--ink-mute); border: 1px solid var(--line); font-weight: 600; }
@@ -1884,6 +1896,21 @@
   .resp-table .rt-type { font-size: 11.5px; color: var(--ink-mute); }
   .resp-table .rt-reason { color: var(--warn); }
   .resp-table .rt-muted { color: var(--ink-mute); }
+  /* Expandable tracking rows (accordion) */
+  .resp-table tr.rt-row { cursor: pointer; transition: background .12s; }
+  .resp-table tr.rt-row:hover td { background: var(--paper); }
+  .resp-table .rt-caret { display: inline-block; margin-right: 8px; color: var(--ink-mute); font-weight: 700; transition: transform .14s; transform: rotate(0deg); }
+  .resp-table .rt-caret.open { transform: rotate(90deg); color: var(--accent); }
+  .resp-table tr.rt-detail { display: none; }
+  .resp-table tr.rt-detail.show { display: table-row; }
+  .resp-table tr.rt-detail > td { padding: 0; border-bottom: 1px solid var(--line); }
+  .rt-det { background: var(--paper); padding: 14px 16px 16px 34px; display: flex; flex-direction: column; gap: 12px; }
+  .rt-det-row { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: start; }
+  .rt-det-k { font: 600 9.5px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-mute); padding-top: 2px; }
+  .rt-det-v { font-size: 12.5px; color: var(--ink); line-height: 1.5; }
+  .rt-det-hint { font-size: 11.5px; color: var(--ink-mute); line-height: 1.45; margin-top: 4px; }
+  .rt-det-v .mono { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+  .rt-det-int { display: block; font: 600 9px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-mute); margin-bottom: 4px; }
   .resp-cta { display: flex; justify-content: space-between; align-items: center; gap: 18px; background: #eef7f3; border: 1px solid #bfe0d3; border-radius: 12px; padding: 15px 18px; margin-bottom: 22px; flex-wrap: wrap; }
   .resp-cta div { font-size: 13px; color: var(--ink-soft); line-height: 1.5; max-width: 70ch; }
   .resp-cta b { color: var(--ink); }
@@ -2054,3 +2081,106 @@
   .pkg-add { width: 100%; margin-top: 12px; padding: 11px; background: var(--paper); border: 1px dashed var(--line-strong); border-radius: 9px; color: var(--ink-soft); font: 600 12.5px 'Inter', sans-serif; cursor: pointer; transition: all .15s; }
   .pkg-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   @media (max-width: 640px) { .cx-urg { align-items: flex-start; } }
+
+  /* =========================================================================
+     Analysis Findings — updated visualization variants (shared-scenario data).
+     All styled with the project paper palette / Fraunces·Inter·JetBrains Mono.
+     See docs/ANALYSIS-FINDINGS-SECTIONS.md.
+     ========================================================================= */
+  .viz-note { font: 600 11.5px 'Inter', sans-serif; color: var(--ink-soft); margin: 0 0 12px; }
+  .viz-note b { color: var(--ink); }
+  .viz .ds-tablewrap { overflow-x: auto; }
+  .viz-sub-h { font: 600 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-mute); margin: 18px 0 9px; }
+  .viz-meta { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--ink-mute); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; margin: 4px 0 12px; }
+  .viz-meta b { color: var(--ink); }
+
+  /* --- Card 1: Effective Date — split day-cell strips + linked gap table --- */
+  .daygrid { display: flex; flex-direction: column; gap: 5px; }
+  .dayrow { display: grid; grid-template-columns: 160px 1fr 50px; align-items: center; gap: 12px; padding: 4px 5px; border-radius: 7px; cursor: pointer; transition: background .12s; }
+  .dayrow:hover { background: var(--paper); }
+  .dayrow.sel { background: var(--accent-soft); }
+  .dayrow .dl { font-size: 12.5px; color: var(--ink); font-weight: 700; line-height: 1.25; }
+  .dayrow .dl .sl { display: block; font: 400 11px 'Inter', sans-serif; color: var(--ink-soft); margin-top: 1px; font-weight: 500; }
+  /* Carrier grouping: a small gap + faint rule above each carrier's first service row */
+  .dayrow.car-first { margin-top: 7px; }
+  .dayrow.car-first:first-child { margin-top: 0; }
+  .daycells { display: flex; gap: 1px; height: 16px; }
+  .daycells i { flex: 1 1 0; min-width: 0; display: block; border-radius: 1px; }
+  .daycells i.have { background: var(--ok); }
+  .daycells i.gap { background: repeating-linear-gradient(45deg, #f3dada, #f3dada 4px, #e8c5c5 4px, #e8c5c5 8px); }
+  .dayrow .dpct { text-align: right; font: 600 12px 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .day-axis { display: grid; grid-template-columns: 160px 1fr 50px; font: 500 10px 'JetBrains Mono', monospace; color: var(--ink-mute); margin: 7px 0 2px; }
+  .day-axis .ax { display: flex; justify-content: space-between; }
+  .grp-cell { font-weight: 600; vertical-align: top; background: var(--paper); color: var(--ink); }
+  .grp-cell.svc-cell { font-weight: 500; background: transparent; color: var(--ink-soft); }
+  tr.gap-hi td { background: var(--warn-soft); }
+
+  /* --- Card 2: Comprehensiveness — status roll-up bar + grouped recon table --- */
+  .statusbar { height: 30px; border-radius: 8px; overflow: hidden; display: flex; background: var(--paper-2); }
+  .statusbar span { display: flex; align-items: center; justify-content: center; color: #fff; font: 600 11.5px 'Inter', sans-serif; white-space: nowrap; overflow: hidden; }
+  .statusbar .s-ok { background: var(--ok); } .statusbar .s-stale { background: var(--warn); } .statusbar .s-miss { background: var(--bad); }
+  tr.row-missing td { background: var(--bad-soft); }
+  tr.row-stale td { background: var(--warn-soft); }
+  td.rate-flag { font-weight: 700; color: var(--bad); }
+  tr.row-stale td.rate-flag { color: var(--warn); }
+  tr.divider-row td { background: var(--paper-2); color: var(--ink-mute); font: 700 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* --- Card 3: Quality — per-card scan (summary + switchable detail) --- */
+  .scan-sel { display: flex; flex-wrap: wrap; gap: 5px; margin: 14px 0 12px; }
+  .scan-sel button { font: 600 11px 'Inter', sans-serif; padding: 5px 11px; border: 1px solid var(--line); background: var(--card); border-radius: 7px; color: var(--ink-mute); cursor: pointer; transition: all .14s; }
+  .scan-sel button:hover { border-color: var(--line-strong); color: var(--ink); }
+  .scan-sel button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .scan-row { cursor: pointer; }
+  .scan-row:hover td { background: var(--paper); }
+  .scan-row.flag td { background: var(--warn-soft); }
+  .scan-row.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+
+  /* --- Card 4: Join — verdict (reuses .join-dial / .join-stack) --- */
+  .join-stack .invonly { background: var(--warn); }
+  .join-stack .suponly { background: var(--bad); }
+  .verdict-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .verdict-big .vb-n { font: 600 34px 'Fraunces', serif; color: var(--ok); line-height: 1; }
+  .verdict-big .vb-l { font-size: 12.5px; color: var(--ink-mute); }
+  .verdict-big .vb-l b { color: var(--ink); }
+
+  /* --- Card 5: Time Period — carrier × week heatmap --- */
+  .hm { border-collapse: collapse; font-size: 11px; }
+  .hm th, .hm td { padding: 5px 9px; text-align: center; border: 1px solid var(--line); }
+  .hm thead th { background: var(--paper-2); font: 500 10px 'JetBrains Mono', monospace; color: var(--ink-mute); }
+  .hm th.rh { text-align: right; background: var(--paper-2); font: 600 11px 'Inter', sans-serif; color: var(--ink); white-space: nowrap; }
+  .hm .y { background: var(--ok-soft); color: var(--ok); font-weight: 700; }
+  .hm .n { background: var(--bad-soft); color: var(--bad); font-weight: 700; }
+  .hm-verdict { font: 500 11px 'JetBrains Mono', monospace; color: var(--ink-mute); padding-left: 12px; white-space: nowrap; }
+
+  /* --- Card 6: Type — spec panel with confidence --- */
+  .spec { display: grid; grid-template-columns: 190px 1fr auto; }
+  .spec > div { padding: 9px 6px; border-bottom: 1px solid var(--line); font-size: 13px; display: flex; align-items: center; }
+  .spec .sk { color: var(--ink-mute); font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .04em; }
+  .spec .sv { color: var(--ink); font-weight: 600; }
+  .spec > div:nth-last-child(-n+3) { border-bottom: none; }
+
+  /* --- Card 7: Field — onboarding mapping table --- */
+  .map-grp td { background: var(--paper-2); color: var(--ink-mute); font: 700 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+  tr.maprow-missing td { background: #f7ece9; }
+  td.mcust-miss { color: var(--bad); font-style: italic; }
+  .map-cell { text-align: right; white-space: nowrap; }
+  .map-btn { font: 600 11px 'Inter', sans-serif; padding: 4px 11px; border: 1px solid var(--accent); background: var(--card); color: var(--accent); border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  .map-btn:hover { background: var(--accent-soft); }
+  .remap { color: var(--ink-mute); cursor: pointer; font-size: 12px; white-space: nowrap; }
+  .remap:hover { color: var(--ink); }
+
+  /* --- Card 8: Data Quality — quality scan (issue table + good/affected bar + tiles) --- */
+  .qbar { height: 12px; background: var(--ok-soft); border-radius: 3px; overflow: hidden; min-width: 90px; }
+  .qbar i { display: block; height: 100%; background: var(--bad); }
+  tr.qs-high td { background: #f7ece9; }
+  .qs-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 2px; }
+  .qs-tile { border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px; background: var(--paper); }
+  .qs-tile .tv { font: 600 20px 'Fraunces', serif; color: var(--ink); line-height: 1; }
+  .qs-tile .tn { font: 500 10px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-mute); margin-top: 5px; }
+
+  @media (max-width: 720px) {
+    .dayrow, .day-axis { grid-template-columns: 110px 1fr 44px; }
+    .spec { grid-template-columns: 140px 1fr auto; }
+    .qs-tiles { grid-template-columns: repeat(2, 1fr); }
+    .viz .hm { display: block; overflow-x: auto; }
+  }

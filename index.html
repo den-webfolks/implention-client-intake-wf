@@ -546,6 +546,7 @@
     <div class="vtabs" id="vtabs">
       <button class="vtab active" data-vtab="review" onclick="switchVTab('review')">Review</button>
       <button class="vtab" data-vtab="response" onclick="switchVTab('response')">Requests</button>
+      <button class="bucket-toggle" id="bucket-toggle" onclick="toggleBucket()">Hide bucket</button>
     </div>
 
     <div class="vtab-panel active" id="tab-review">
@@ -624,7 +625,7 @@
             <div class="ablock">
               <h5><span class="pin"></span>Business Impact &amp; Overview</h5>
               <div class="bi-grid">
-                <div class="bi-block summary"><div class="bi-h">Executive summary</div><p>We checked whether we have pricing in effect for every carrier and service level on every day of the lookback. There are gaps for DHL and FedEx during parts of the window.</p></div>
+                <div class="bi-block summary"><div class="bi-h">Executive summary</div><p>We checked, for each <b>carrier × service</b> combination, whether a rate card was in effect on every day of the lookback — a single carrier can run several services, each with its own card. UPS SurePost and DHL eCom SmartMail have no card at all, FedEx SmartPost expired, and USPS Priority Mail has a mid-window gap.</p></div>
                 <div class="bi-block impact"><div class="bi-h">Business impact</div><p>Without pricing in effect for a given day, charges on that day can’t be validated against what was contracted.</p></div>
                 <div class="bi-block risk"><div class="bi-h">Potential risks</div><p>If pricing is missing for a period, we can’t tell whether the customer was overbilled during it.</p></div>
                 <div class="bi-block opp"><div class="bi-h">Opportunity <span class="bi-gain">+12%</span></div><p>Filling the date gaps lets us validate every shipment against the rate that was actually in effect.</p></div>
@@ -639,40 +640,39 @@
               <h5><span class="pin"></span>Findings</h5>
 
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Coverage timeline — effective dates across the lookback window</div>
-                <div class="track-scale"><span>Feb 19</span><span>Mar</span><span>Apr</span><span>May 20</span></div>
-                <div class="cov-row"><div class="cov-label">UPS<span class="sl">Ground</span></div><div class="track"><div class="seg have" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--ok);font-weight:600;">✓ Covered</div></div>
-                <div class="cov-row"><div class="cov-label">FedEx<span class="sl">Ground / Home</span></div><div class="track"><div class="seg have" style="left:0;width:18%"></div><div class="seg gap" style="left:18%;width:8%"></div><div class="seg have" style="left:26%;width:74%"></div></div><div class="cov-verdict" style="color:var(--bad);font-weight:600;">✗ Gap Feb 12–18</div></div>
-                <div class="cov-row"><div class="cov-label">FedEx<span class="sl">SmartPost</span></div><div class="track"><div class="seg gap" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--bad);font-weight:600;">✗ Expired 12/31/25</div></div>
-                <div class="cov-row"><div class="cov-label">USPS<span class="sl">Priority</span></div><div class="track"><div class="seg have" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--ok);font-weight:600;">✓ Covered</div></div>
-                <div class="cov-row"><div class="cov-label">DHL eComm<span class="sl">SmartMail</span></div><div class="track"><div class="seg gap" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--bad);font-weight:600;">✗ No card</div></div>
+                <div class="viz-h"><span class="tag">Viz</span>Coverage over the 90-day lookback — one strip per carrier × service</div>
+                <div class="viz-note">Analyzed per <b>carrier × service</b> — a carrier can run several services, each priced by its own card. Overall <b>43% of carrier-service-days covered</b>. Each cell is one day — green = effective card, red = gap.</div>
+                <div id="eff-strips" class="daygrid"></div>
+                <div class="day-axis"><div></div><div class="ax"><span>Feb 19</span><span>Mar</span><span>Apr</span><span>May 20</span></div><div></div></div>
+                <div class="viz-sub-h">Gap list — uncovered ranges per carrier × service</div>
+                <div class="ds-tablewrap"><table id="eff-gaps"><thead><tr><th>Carrier</th><th>Service</th><th>Uncovered range</th><th>Days</th><th>Shipments at risk</th></tr></thead><tbody></tbody></table></div>
               </div>
 
-              <div class="finding sev-high" data-analysis="ax-eff" data-title="Provide FedEx Ground coverage for Feb 12–18" data-desc="No valid FedEx Ground rate card exists between Feb 12 and Feb 18, 2026. Please supply a card effective for that window." data-prio="high" data-source="Missing FedEx Ground coverage" data-eta="3">
-                <div class="finding-head"><div class="ftitle">Missing FedEx Ground coverage</div><div class="fimpact">−6% score</div></div>
-                <div class="fdesc">No valid rate card exists between <b>February 12 and February 18</b>. 184 shipments fell in this window.</div>
+              <div class="finding sev-critical" data-analysis="ax-eff" data-title="Provide UPS SurePost & DHL eCommerce rate cards" data-desc="No effective rate card exists for UPS SurePost (3,341 shipments) or DHL eCom SmartMail (341 shipments) anywhere in the 90-day lookback. Please supply current cards effective across the window so these shipments can be priced." data-prio="high" data-source="No effective card" data-eta="3" data-attach="UPS SurePost + DHL eCommerce rate cards">
+                <div class="finding-head"><div class="ftitle">No effective card — UPS SurePost &amp; DHL eCom</div><div class="fimpact">−9% score</div></div>
+                <div class="fdesc">Neither <b>UPS SurePost</b> (3,341 shipments) nor <b>DHL eCom SmartMail</b> (341 shipments) has an effective card on any day of the lookback.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Unable to validate invoice charges during the affected period.</div>
+                <div class="fbiz"><b>Business impact:</b> The two largest coverage gaps — together they block billing validation for ~3,700 shipments.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
 
-              <div class="finding sev-critical" data-analysis="ax-eff" data-title="Upload DHL eCommerce rate card" data-desc="No DHL eCommerce rate card is on file for any date in the lookback. This blocks all DHL shipments from being repriced." data-prio="high" data-source="Missing DHL carrier coverage" data-eta="3" data-attach="DHL rate card">
-                <div class="finding-head"><div class="ftitle">No DHL eCommerce rate card on file</div><div class="fimpact">−9% score</div></div>
-                <div class="fdesc">No effective card exists for any day of the lookback. <b>341 DHL shipments</b> cannot be repriced.</div>
+              <div class="finding sev-medium" data-analysis="ax-eff" data-title="Provide 2026 FedEx SmartPost rate card" data-desc="The FedEx SmartPost card expired 12/31/2025 — there is no effective card after that date for 200 SmartPost shipments. Please supply a 2026 card." data-prio="medium" data-source="Expired SmartPost card" data-eta="5" data-attach="FedEx SmartPost 2026 rate card">
+                <div class="finding-head"><div class="ftitle">FedEx SmartPost card expired 12/31/25</div><div class="fimpact">−4% score</div></div>
+                <div class="fdesc">The latest SmartPost card ends <b>12/31/2025</b>; 200 shipments fall after expiry with no effective card.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Largest single coverage gap — blocks billing validation for the entire DHL carrier.</div>
+                <div class="fbiz"><b>Business impact:</b> SmartPost charges can't be validated until a 2026 card is supplied.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
 
-              <div class="finding sev-high" data-analysis="ax-eff" data-title="Provide 2026 FedEx SmartPost rate card" data-desc="The FedEx SmartPost card expired 12/31/2025 — no effective card for any lookback day." data-prio="medium" data-source="Expired SmartPost card" data-eta="5">
-                <div class="finding-head"><div class="ftitle">FedEx SmartPost card expired</div><div class="fimpact">−4% score</div></div>
-                <div class="fdesc">Latest card on file ends <b>12/31/2025</b>. 200 SmartPost shipments fall after expiry.</div>
+              <div class="finding sev-medium" data-analysis="ax-eff" data-title="Provide USPS Priority Mail card for the mid-window gap" data-desc="USPS Priority Mail has a ~15-day mid-window gap with no effective card (1,488 shipments exposed). Please supply a card covering that window or confirm none applies." data-prio="medium" data-source="USPS effective-date gap" data-eta="5" data-attach="USPS Priority Mail card (mid-window)">
+                <div class="finding-head"><div class="ftitle">USPS Priority Mail effective-date gap</div><div class="fimpact">−3% score</div></div>
+                <div class="fdesc">A <b>~15-day mid-window gap</b> leaves USPS Priority Mail with no effective card; 1,488 shipments are exposed.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> SmartPost charges cannot be validated until a 2026 card is supplied.</div>
+                <div class="fbiz"><b>Business impact:</b> Priority Mail charges in that window can't be validated against an effective rate.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -733,7 +733,7 @@
             <div class="ablock">
               <h5><span class="pin"></span>Business Impact &amp; Overview</h5>
               <div class="bi-grid">
-                <div class="bi-block summary"><div class="bi-h">Executive summary</div><p>We checked whether pricing exists for everything that appears in the invoices. Most combinations are covered; DHL SmartMail and a FedEx variant are not.</p></div>
+                <div class="bi-block summary"><div class="bi-h">Executive summary</div><p>We checked whether pricing exists for everything that appears in the invoices. Most combinations are covered; UPS SurePost and DHL SmartMail have no card, and FedEx SmartPost is on a stale 2023 card.</p></div>
                 <div class="bi-block impact"><div class="bi-h">Business impact</div><p>If a service is billed but has no matching rate card, those charges can’t be checked at all.</p></div>
                 <div class="bi-block risk"><div class="bi-h">Potential risks</div><p>Unpriced services are billed without any validation — a common place for silent overcharges to hide.</p></div>
                 <div class="bi-block opp"><div class="bi-h">Opportunity <span class="bi-gain">+9%</span></div><p>Supplying the two missing rate cards extends validation to every service the customer is actually billed for.</p></div>
@@ -745,33 +745,50 @@
             <div class="ablock primary">
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Carrier × service-level coverage matrix</div>
-                <div class="matrix" style="grid-template-columns: 110px repeat(4, 1fr);">
-                  <div></div>
-                  <div class="mh">Ground</div><div class="mh">Express</div><div class="mh">Economy</div><div class="mh">Priority</div>
-                  <div class="rowlbl">UPS</div><div class="mcell have">✓</div><div class="mcell have">✓</div><div class="mcell na">—</div><div class="mcell na">—</div>
-                  <div class="rowlbl">FedEx</div><div class="mcell have">✓</div><div class="mcell have">✓</div><div class="mcell miss">✗</div><div class="mcell na">—</div>
-                  <div class="rowlbl">USPS</div><div class="mcell na">—</div><div class="mcell na">—</div><div class="mcell partial">~</div><div class="mcell have">✓</div>
-                  <div class="rowlbl">DHL</div><div class="mcell na">—</div><div class="mcell na">—</div><div class="mcell miss">✗</div><div class="mcell na">—</div>
+                <div class="viz-h"><span class="tag">Viz</span>Coverage of invoiced carrier × service — volume by rate-card status</div>
+                <div class="viz-sub-h" style="margin-top:0">Shipment volume by status</div>
+                <div class="statusbar">
+                  <span class="s-ok" style="width:73.9%">OK · 11,010</span>
+                  <span class="s-stale" style="width:1.3%">200</span>
+                  <span class="s-miss" style="width:24.8%">Missing · 3,682</span>
                 </div>
-                <div class="legend" style="margin-top:12px;"><span class="ok"><span class="dot" style="background:var(--ok)"></span>Covered</span><span class="opt-have"><span class="dot" style="background:var(--warn)"></span>Partial</span><span class="miss"><span class="dot" style="background:var(--bad)"></span>Missing</span><span class="opt"><span class="dot" style="background:var(--line-strong)"></span>Not used</span></div>
+                <div class="legend" style="margin-top:10px"><span class="ok"><span class="dot" style="background:var(--ok)"></span>Current card</span><span class="opt-have"><span class="dot" style="background:var(--warn)"></span>Stale card</span><span class="miss"><span class="dot" style="background:var(--bad)"></span>No card</span></div>
+                <div class="ds-tablewrap" style="margin-top:14px"><table>
+                  <thead><tr><th>Carrier</th><th>Service level</th><th>In invoices?</th><th>Rate card?</th><th>Status</th></tr></thead>
+                  <tbody>
+                    <tr><td class="grp-cell" rowspan="4">UPS</td><td>Ground</td><td>Yes (4,812 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr><td>2nd Day Air</td><td>Yes (1,041 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr><td>Next Day Air Saver</td><td>Yes (218 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr class="row-missing"><td>SurePost</td><td>Yes (3,341 shp)</td><td class="rate-flag">Missing</td><td><span class="pill bad">Missing</span></td></tr>
+                    <tr><td class="grp-cell" rowspan="3">FedEx</td><td>Ground</td><td>Yes (1,920 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr><td>Home Delivery</td><td>Yes (1,008 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr class="row-stale"><td>SmartPost</td><td>Yes (200 shp)</td><td class="rate-flag">Stale (2023)</td><td><span class="pill warn">Stale</span></td></tr>
+                    <tr><td class="grp-cell" rowspan="2">USPS</td><td>Priority Mail</td><td>Yes (1,488 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr><td>Ground Advantage</td><td>Yes (523 shp)</td><td>Yes (2026)</td><td><span class="pill ok">OK</span></td></tr>
+                    <tr class="row-missing"><td class="grp-cell">DHL eCom</td><td>SmartMail</td><td>Yes (341 shp)</td><td class="rate-flag">Missing</td><td><span class="pill bad">Missing</span></td></tr>
+                    <tr class="divider-row"><td colspan="5">On master carrier list · no rate card · not seen in invoices</td></tr>
+                    <tr><td class="grp-cell">OnTrac</td><td>—</td><td>No</td><td>None</td><td><span class="pill neutral">Not billed</span></td></tr>
+                    <tr><td class="grp-cell">Zone Jump</td><td>—</td><td>No</td><td>None</td><td><span class="pill neutral">Not billed</span></td></tr>
+                    <tr><td class="grp-cell">GLS</td><td>—</td><td>No</td><td>None</td><td><span class="pill neutral">Not billed</span></td></tr>
+                  </tbody>
+                </table></div>
               </div>
 
-              <div class="finding sev-critical" data-analysis="ax-comp" data-title="Provide DHL SmartMail rate card" data-desc="DHL SmartMail appears on invoices but has no rate card. Please supply the card so these shipments can be priced." data-prio="high" data-source="DHL not represented" data-eta="3" data-attach="DHL rate card">
-                <div class="finding-head"><div class="ftitle">DHL SmartMail not represented</div><div class="fimpact">−7% score</div></div>
-                <div class="fdesc">DHL SmartMail is billed on invoices but absent from the rate-card set.</div>
+              <div class="finding sev-critical" data-analysis="ax-comp" data-title="Provide UPS SurePost & DHL SmartMail rate cards" data-desc="UPS SurePost (3,341 shipments) and DHL eCom SmartMail (341 shipments) are billed on invoices but have no rate card at all. Please supply both cards so this volume can be priced." data-prio="high" data-source="Carrier not represented" data-eta="3" data-attach="UPS SurePost + DHL SmartMail rate cards">
+                <div class="finding-head"><div class="ftitle">UPS SurePost &amp; DHL SmartMail not represented</div><div class="fimpact">−8% score</div></div>
+                <div class="fdesc">Both services are billed on invoices but absent from the rate-card set — <b>3,682 shipments</b> can't be priced.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> An entire carrier's volume can't be validated.</div>
+                <div class="fbiz"><b>Business impact:</b> A large chunk of invoiced volume can't be validated at all.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
 
-              <div class="finding sev-medium" data-analysis="ax-comp" data-title="Confirm FedEx SmartPost / Economy service-level name" data-desc="FedEx Economy on invoices may be the same as the SmartPost card under a different name. Confirm the mapping." data-prio="medium" data-source="Service-level name mismatch" data-eta="5">
-                <div class="finding-head"><div class="ftitle">FedEx Economy may map to SmartPost</div><div class="fimpact">−2% score</div></div>
-                <div class="fdesc">The billed service level "Economy" has no direct card, but may be the SmartPost product under a different label.</div>
+              <div class="finding sev-medium" data-analysis="ax-comp" data-title="Replace stale FedEx SmartPost card (2023)" data-desc="FedEx SmartPost is only covered by a stale 2023 card (200 shipments). Please provide the current 2026 card." data-prio="medium" data-source="Stale FedEx card" data-eta="5" data-attach="FedEx SmartPost 2026 card">
+                <div class="finding-head"><div class="ftitle">FedEx SmartPost on a stale 2023 card</div><div class="fimpact">−2% score</div></div>
+                <div class="fdesc">The only SmartPost card on file is from <b>2023</b>; 200 shipments price against outdated rates.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> A mapping confirmation may close this gap without a new file.</div>
+                <div class="fbiz"><b>Business impact:</b> Stale rates produce false validation passes/fails until refreshed.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -844,41 +861,15 @@
               <h5><span class="pin"></span>Findings</h5>
 
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Zone coverage — billed zones vs rate card (FedEx SmartPost)</div>
-                <div class="zgrid">
-                  <div class="zrow"><div class="zl"></div><div class="zhead">Z1</div><div class="zhead">Z2</div><div class="zhead">Z3</div><div class="zhead">Z4</div><div class="zhead">Z5</div><div class="zhead">Z6</div><div class="zhead">Z7</div><div class="zhead">Z8</div></div>
-                  <div class="zrow"><div class="zl">FedEx SmartPost<span class="sl">in card</span></div><div class="zcell have">✓</div><div class="zcell have">✓</div><div class="zcell have">✓</div><div class="zcell have">✓</div><div class="zcell have">✓</div><div class="zcell have">✓</div><div class="zcell miss">✗</div><div class="zcell miss">✗</div></div>
-                  <div class="zrow"><div class="zl">Billed on invoice<span class="sl">seen</span></div><div class="zcell have">·</div><div class="zcell have">·</div><div class="zcell have">·</div><div class="zcell have">·</div><div class="zcell have">·</div><div class="zcell have">·</div><div class="zcell miss">!</div><div class="zcell miss">!</div></div>
-                </div>
+                <div class="viz-h"><span class="tag">Viz</span>Per-card cleanliness scan — weight breaks &amp; UOM across rate cards on file</div>
+                <div class="ds-tablewrap"><table id="qual-scan"><thead><tr><th>Rate card</th><th>Zones present</th><th>Weight breaks</th><th>UOM stated?</th><th>Verdict</th></tr></thead><tbody></tbody></table></div>
+                <div id="qual-scan-sel" class="scan-sel"></div>
+                <div id="qual-scan-detail"></div>
               </div>
 
-              <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Invoice vs rate card — unmatched billed line</div>
-                <div class="cmp">
-                  <div class="cmp-row">
-                    <div class="cmp-side"><div class="lbl">Billed on invoice</div><div class="d">SmartPost · Zone 7 · 5 lb · $11.40</div></div>
-                    <div class="cmp-arrow">→</div>
-                    <div class="cmp-side bad"><div class="lbl">Rate card lookup</div><div class="d">No entry for Zone 7 / 5 lb</div></div>
-                  </div>
-                  <div class="cmp-row">
-                    <div class="cmp-side"><div class="lbl">Billed on invoice</div><div class="d">SmartPost · Zone 5 · 80 lb · $42.10</div></div>
-                    <div class="cmp-arrow">→</div>
-                    <div class="cmp-side bad"><div class="lbl">Rate card lookup</div><div class="d">Weight break 70–150 lb missing</div></div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Unit-of-measure validation</div>
-                <div class="uom-panel">
-                  <div class="uom-item"><div class="f">FedEx_Rates_Q1.xlsx</div><div class="st"><span class="pill bad">No UOM declared — lb vs oz ambiguous</span></div></div>
-                  <div class="uom-item"><div class="f">UPS_Rate_Card_Jan.xlsx</div><div class="st"><span class="pill ok">UOM: lb (explicit)</span></div></div>
-                </div>
-              </div>
-
-              <div class="finding sev-high" data-analysis="ax-qual" data-title="Provide FedEx SmartPost zones 7–8" data-desc="The SmartPost card is missing zones 7 and 8, which are billed on invoices. Please supply the complete zone 1–8 card." data-prio="high" data-source="Missing zones 7–8" data-eta="3">
-                <div class="finding-head"><div class="ftitle">SmartPost missing zones 7–8</div><div class="fimpact">−6% score</div></div>
-                <div class="fdesc">Zones 7 and 8 are billed but absent from the card — these shipments match nothing and pass silently.</div>
+              <div class="finding sev-high" data-analysis="ax-qual" data-title="Provide FedEx Ground weight breaks 41–45 lb" data-desc="The FedEx Ground 2026 card has a weight-break gap at 41–45 lb; shipments in that band match no card row. Please extend the card to cover 41–45 lb." data-prio="high" data-source="FedEx weight-break gap" data-eta="3" data-attach="FedEx Ground card with 41–45 lb breaks">
+                <div class="finding-head"><div class="ftitle">FedEx Ground weight-break gap (41–45 lb)</div><div class="fimpact">−6% score</div></div>
+                <div class="fdesc">The FedEx Ground 2026 card skips the <b>41–45 lb</b> weight band — shipments there match nothing and pass silently.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> Silent under-coverage; charges appear validated when they aren't.</div>
                 <div class="finding-actions">
@@ -886,21 +877,21 @@
                 </div>
               </div>
 
-              <div class="finding sev-medium" data-analysis="ax-qual" data-title="Provide weight breaks 70–150 lb" data-desc="The card lacks weight breaks for 70–150 lb, which appear on invoices. Please extend the card to cover them." data-prio="medium" data-source="Missing weight breaks" data-eta="5">
-                <div class="finding-head"><div class="ftitle">Missing weight breaks 70–150 lb</div><div class="fimpact">−4% score</div></div>
-                <div class="fdesc">Heavier shipments billed at 70–150 lb have no matching card row.</div>
+              <div class="finding sev-medium" data-analysis="ax-qual" data-title="Confirm unit of measure on USPS Priority Mail card" data-desc="The USPS Priority Mail 2026 card mixes flat-rate and per-lb pricing without a clear unit of measure (lb vs oz). Please confirm so weights map correctly." data-prio="medium" data-source="USPS UOM ambiguous" data-eta="5">
+                <div class="finding-head"><div class="ftitle">USPS Priority Mail — ambiguous unit of measure</div><div class="fimpact">−3% score</div></div>
+                <div class="fdesc">The card mixes flat-rate and per-lb pricing with no declared unit; lb vs oz is ambiguous and risks mis-mapping.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Heavy-parcel charges can't be validated.</div>
+                <div class="fbiz"><b>Business impact:</b> A one-line confirmation likely resolves this without a new file.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
 
-              <div class="finding sev-medium" data-analysis="ax-qual" data-title="Confirm unit of measure on FedEx card" data-desc="The FedEx rate card doesn't declare a unit of measure (lb vs oz). Please confirm so weights map correctly." data-prio="medium" data-source="No UOM declared" data-eta="3">
-                <div class="finding-head"><div class="ftitle">No unit of measure on FedEx card</div><div class="fimpact">−3% score</div></div>
-                <div class="fdesc">Weight column has no declared unit; lb vs oz is ambiguous and risks mis-mapping.</div>
+              <div class="finding sev-low" data-analysis="ax-qual" data-title="Confirm zone 1 is never billed (UPS/FedEx cards)" data-desc="The UPS Ground and FedEx Ground 2026 cards start at zone 2. Please confirm zone 1 is never billed for these services." data-prio="low" data-source="Zone 1 not present" data-eta="10">
+                <div class="finding-head"><div class="ftitle">Zone 1 not present on UPS/FedEx 2–8 cards</div><div class="fimpact">informational</div></div>
+                <div class="fdesc">Both cards begin at zone 2. No zone-1 lines were billed, but confirm this is expected.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> A one-line confirmation likely resolves this without a new file.</div>
+                <div class="fbiz"><b>Business impact:</b> Likely a non-issue; confirmation rules out a missing zone-1 tier.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -972,29 +963,42 @@
             <div class="ablock primary">
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Join rate — invoice rows matched to support data</div>
-                <div class="join-viz">
-                  <div class="join-dial"><div class="p">77%</div><div class="l">Rows joined</div></div>
-                  <div class="join-bars">
-                    <div class="join-stack"><span class="matched" style="width:77%">8,420 matched</span><span class="unmatched" style="width:23%">2,510</span></div>
-                    <div class="join-rows"><span class="join-row">Invoice rows <b>10,930</b></span><span class="join-row">Support rows <b>9,180</b></span><span class="join-row">Join key <b>tracking #</b></span></div>
-                  </div>
+                <div class="viz-h"><span class="tag">Viz</span>Join verdict — invoice rows matched to support data</div>
+                <div class="verdict-big"><span class="vb-n">96.6%</span><span class="vb-l">matched on <b>tracking_number</b> · 14,386 of 14,892 invoice rows</span></div>
+                <div class="join-stack" style="margin:10px 0 8px">
+                  <span class="matched" style="width:96.6%">14,386 matched</span>
+                  <span class="invonly" style="width:1.8%">506</span>
+                  <span class="suponly" style="width:1.6%">372</span>
                 </div>
+                <div class="join-rows">
+                  <span class="join-row">Invoice-only <b>506</b></span>
+                  <span class="join-row">Support-only <b>372</b></span>
+                  <span class="join-row">Support rows <b>14,758</b></span>
+                </div>
+                <div class="viz-sub-h">Candidate keys</div>
+                <div class="ds-tablewrap"><table>
+                  <thead><tr><th>Candidate key</th><th>Uniqueness</th><th>Match rate</th><th>Verdict</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono">tracking_number</td><td>99.1%</td><td>96.6%</td><td><span class="pill ok">Chosen</span></td></tr>
+                    <tr><td class="mono">order_id</td><td>92.8%</td><td>89.4%</td><td><span class="pill neutral">Split ships</span></td></tr>
+                    <tr><td class="mono">invoice_line_id</td><td>100%</td><td>—</td><td><span class="pill neutral">Invoice-only</span></td></tr>
+                  </tbody>
+                </table></div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-join" data-title="Provide a shared identifier across invoice & support files" data-desc="23% of invoice rows can’t be joined to the support file. Please ensure both files share a common unique identifier (e.g. tracking number)." data-prio="high" data-source="Unjoined invoice rows" data-eta="5">
-                <div class="finding-head"><div class="ftitle">23% of invoice rows can’t join to support data</div><div class="fimpact">−8% score</div></div>
-                <div class="fdesc">Of 10,930 invoice rows, 2,510 have no matching key in the support file and can’t be enriched.</div>
+              <div class="finding sev-medium" data-analysis="ax-join" data-title="Resolve 506 unmatched invoice rows" data-desc="506 invoice rows (~3.4%) have no matching row in the support file on tracking_number and can’t be enriched. Please provide support records covering these rows." data-prio="medium" data-source="Unmatched invoice rows" data-eta="5" data-attach="Support file covering unmatched rows">
+                <div class="finding-head"><div class="ftitle">506 invoice rows can’t match support data</div><div class="fimpact">−5% score</div></div>
+                <div class="fdesc">Of 14,892 invoice rows, <b>506 (~3.4%)</b> have no matching tracking_number in the support file and can’t be enriched.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> Unjoined rows lose dimension and service-level detail, lowering audit precision.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-medium" data-analysis="ax-join" data-title="Align join key between invoice and support file" data-desc="Support file keys on order ID while the invoice keys on tracking number. Please add the tracking number to the support export." data-prio="medium" data-source="Join key mismatch" data-eta="5">
-                <div class="finding-head"><div class="ftitle">Key mismatch: support uses order ID, invoice uses tracking #</div><div class="fimpact">−3% score</div></div>
-                <div class="fdesc">The two files key on different identifiers, forcing a fuzzy match for part of the data.</div>
+              <div class="finding sev-low" data-analysis="ax-join" data-title="Confirm tracking_number as the join key (split ships)" data-desc="order_id is only 92.8% unique because of split shipments, so tracking_number was chosen as the join key. Please confirm this is correct." data-prio="low" data-source="Join key choice" data-eta="10">
+                <div class="finding-head"><div class="ftitle">order_id not unique — tracking_number chosen as key</div><div class="fimpact">informational</div></div>
+                <div class="fdesc">order_id repeats across split shipments (92.8% unique), so the join keys on <b>tracking_number</b> (99.1% unique) instead.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> A consistent key would raise the join rate and remove ambiguity.</div>
+                <div class="fbiz"><b>Business impact:</b> Confirms the join is keyed correctly so split ships aren’t mis-matched.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -1057,24 +1061,30 @@
             <div class="ablock primary">
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Invoice coverage by billing week (weekly cadence)</div>
-                <div class="track-scale"><span>Feb 19</span><span>Mar</span><span>Apr</span><span>May 20</span></div>
-                <div class="cov-row"><div class="cov-label">UPS<span class="sl">weekly</span></div><div class="track"><div class="seg have" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--ok);font-weight:600;">✓ 13/13 wks</div></div>
-                <div class="cov-row"><div class="cov-label">FedEx<span class="sl">weekly</span></div><div class="track"><div class="seg have" style="left:0;width:100%"></div></div><div class="cov-verdict" style="color:var(--ok);font-weight:600;">✓ 13/13 wks</div></div>
-                <div class="cov-row"><div class="cov-label">DHL<span class="sl">weekly</span></div><div class="track"><div class="seg have" style="left:0;width:62%"></div><div class="seg gap" style="left:62%;width:8%"></div><div class="seg have" style="left:70%;width:30%"></div></div><div class="cov-verdict" style="color:var(--bad);font-weight:600;">✗ wk Apr 13</div></div>
+                <div class="viz-h"><span class="tag">Viz</span>Invoice coverage by billing week — carrier × week (13 weeks, weekly cadence)</div>
+                <div class="ds-tablewrap"><table class="hm">
+                  <thead><tr><th class="rh"></th><th>W1</th><th>W2</th><th>W3</th><th>W4</th><th>W5</th><th>W6</th><th>W7</th><th>W8</th><th>W9</th><th>W10</th><th>W11</th><th>W12</th><th>W13</th><th>Weeks</th></tr></thead>
+                  <tbody>
+                    <tr><th class="rh">UPS · Ground</th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td>13/13</td></tr>
+                    <tr><th class="rh">FedEx · Ground</th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td>13/13</td></tr>
+                    <tr><th class="rh">USPS · Priority Mail</th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td>13/13</td></tr>
+                    <tr><th class="rh">DHL eCom · SmartMail</th><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="n">✗</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td class="y">✓</td><td>12/13</td></tr>
+                  </tbody>
+                </table></div>
+                <div class="viz-note" style="margin:12px 0 0">W8 = week of <b>Apr 13</b> — the only missing invoice across all carriers.</div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-time" data-title="Provide missing DHL invoice — week of Apr 13" data-desc="Weekly billing is missing the DHL invoice for the week of Apr 13, 2026. Please upload it so the lookback is complete." data-prio="high" data-source="Missing DHL billing week" data-eta="3">
-                <div class="finding-head"><div class="ftitle">DHL invoice missing — week of Apr 13</div><div class="fimpact">−7% score</div></div>
-                <div class="fdesc">Billing is weekly, but no DHL invoice was received for the week of Apr 13, 2026 (1 of 13 weeks).</div>
+              <div class="finding sev-high" data-analysis="ax-time" data-title="Provide missing DHL invoice — week of Apr 13" data-desc="Weekly billing is missing the DHL eCom SmartMail invoice for the week of Apr 13, 2026 (12 of 13 weeks present). Please upload it so the lookback is complete." data-prio="high" data-source="Missing DHL billing week" data-eta="3" data-attach="DHL invoice — week of Apr 13">
+                <div class="finding-head"><div class="ftitle">DHL invoice missing — week of Apr 13</div><div class="fimpact">−4% score</div></div>
+                <div class="fdesc">Billing is weekly, but no DHL invoice was received for the week of <b>Apr 13, 2026</b> (12 of 13 weeks present).</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> That week of DHL volume can’t be reconciled until the invoice is supplied.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-low" data-analysis="ax-time" data-title="Confirm weekly billing cadence" data-desc="Please confirm all carriers bill weekly (no monthly/biweekly exceptions)." data-prio="low" data-source="Billing cadence" data-eta="10">
+              <div class="finding sev-low" data-analysis="ax-time" data-title="Confirm weekly billing cadence" data-desc="All four carriers bill weekly across the window. Please confirm there are no biweekly/monthly exceptions." data-prio="low" data-source="Billing cadence" data-eta="10">
                 <div class="finding-head"><div class="ftitle">Billing cadence confirmed as weekly</div><div class="fimpact">informational</div></div>
-                <div class="fdesc">All carriers bill on a consistent weekly cadence across the window — no biweekly/monthly mixing detected.</div>
+                <div class="fdesc">All four carriers bill on a consistent weekly cadence across the window — no biweekly/monthly mixing detected.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> Confirms the period model used for coverage checks; no action needed.</div>
                 <div class="finding-actions">
@@ -1139,20 +1149,20 @@
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
                 <div class="viz-h"><span class="tag">Viz</span>Invoice profile — detected structure</div>
-                <div class="profile-grid">
-                  <div class="prof"><div class="k">Frequency</div><div class="v">Weekly</div></div>
-                  <div class="prof"><div class="k">Billing type</div><div class="v">Single combined invoice</div></div>
-                  <div class="prof"><div class="k">Invoice type</div><div class="v">Combined (parcel + fulfillment)</div></div>
-                  <div class="prof"><div class="k">Charge type</div><div class="v">Standard (full detail)</div></div>
-                  <div class="prof"><div class="k">Carrier structure</div><div class="v">Standard (not VCN)</div></div>
-                  <div class="prof"><div class="k">Layout</div><div class="v">Wide (Promix-style)</div></div>
+                <div class="spec">
+                  <div class="sk">Frequency</div><div class="sv">Weekly</div><div><span class="pill ok">high conf.</span></div>
+                  <div class="sk">Billing type</div><div class="sv">Separate invoice per carrier</div><div><span class="pill ok">high conf.</span></div>
+                  <div class="sk">Invoice type</div><div class="sv">Parcel only</div><div><span class="pill warn">med conf.</span></div>
+                  <div class="sk">Charge type</div><div class="sv">Standard (full detail)</div><div><span class="pill ok">high conf.</span></div>
+                  <div class="sk">Carrier structure</div><div class="sv">VCN (virtual carrier network)</div><div><span class="pill warn">med conf.</span></div>
+                  <div class="sk">Layout</div><div class="sv">Wide (Promix-style)</div><div><span class="pill neutral">low conf.</span></div>
                 </div>
               </div>
-              <div class="finding sev-medium" data-analysis="ax-type" data-title="Confirm parcel vs fulfillment line identifier" data-desc="The combined invoice includes fulfillment lines. Please confirm which column/value distinguishes parcel rows so we can filter accurately." data-prio="medium" data-source="Combined invoice type" data-eta="5">
-                <div class="finding-head"><div class="ftitle">Combined invoice includes fulfillment lines</div><div class="fimpact">−2% score</div></div>
-                <div class="fdesc">The invoice mixes parcel and fulfillment charges; fulfillment rows must be filtered out before parcel reconciliation.</div>
+              <div class="finding sev-medium" data-analysis="ax-type" data-title="Confirm canonical carrier names (VCN)" data-desc="The invoice uses a virtual carrier network (VCN) whose carrier labels vary in capitalization. Please confirm the canonical carrier names so VCN labels can be normalized." data-prio="medium" data-source="VCN naming" data-eta="5">
+                <div class="finding-head"><div class="ftitle">Carrier structure is a VCN with inconsistent labels</div><div class="fimpact">−2% score</div></div>
+                <div class="fdesc">Carriers are billed through a virtual carrier network; the same carrier appears under several capitalizations and must be normalized before reconciliation.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Without a filter, fulfillment charges would distort parcel-level audit results.</div>
+                <div class="fbiz"><b>Business impact:</b> Inconsistent VCN labels split one carrier into several, distorting carrier-level audit results.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -1215,31 +1225,45 @@
             <div class="ablock primary">
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Field coverage by tier</div>
-                <div class="ftiers">
-                  <div class="ftier"><div class="th">Required <span class="ct">· 8 of 9 mapped</span></div><div class="fchips">
-                    <span class="fchip mapped">Carrier</span><span class="fchip mapped">Tracking #</span><span class="fchip mapped">Charge</span><span class="fchip mapped">Weight</span><span class="fchip mapped">Zone</span><span class="fchip mapped">Ship date</span><span class="fchip mapped">Order #</span><span class="fchip mapped">Origin / Dest</span><span class="fchip missing">Service level</span>
-                  </div></div>
-                  <div class="ftier"><div class="th">Strongly preferred <span class="ct">· 5 of 5 mapped</span></div><div class="fchips">
-                    <span class="fchip mapped">Dim weight</span><span class="fchip mapped">Residential flag</span><span class="fchip mapped">Package count</span><span class="fchip mapped">Surcharge code</span><span class="fchip mapped">Invoice #</span>
-                  </div></div>
-                  <div class="ftier"><div class="th">Optional — available to capture</div><div class="fchips">
-                    <span class="fchip avail">Declared value</span><span class="fchip avail">Insurance</span><span class="fchip avail">Reference 2</span>
-                  </div></div>
-                </div>
+                <div class="viz-h"><span class="tag">Viz</span>Field mapping — Implentio field → customer column, by importance</div>
+                <div class="ds-tablewrap"><table>
+                  <thead><tr><th>Implentio field</th><th>Customer field</th><th>Status</th><th class="map-cell">Mapping</th></tr></thead>
+                  <tbody>
+                    <tr class="map-grp"><td colspan="4">Required · recon can't run without these</td></tr>
+                    <tr><td class="mono">tracking_number</td><td>Tracking Number</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">carrier</td><td>Carrier</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">service_level</td><td>Service</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">ship_date</td><td>Ship Date</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">zone</td><td>Zone</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">billed_weight</td><td>Bill Wt</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">base_rate</td><td>Base Charge</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">fuel_surcharge</td><td>Fuel Surcharge</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">net_charge</td><td>Net Amount</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr class="maprow-missing"><td class="mono">destination_zip</td><td class="mcust-miss">— not in invoice</td><td><span class="pill bad">Missing</span></td><td class="map-cell"><button class="map-btn" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">+ Map</button></td></tr>
+                    <tr class="map-grp"><td colspan="4">Strongly preferred · needed for full audits</td></tr>
+                    <tr><td class="mono">origin_zip</td><td>Origin Zip</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr><td class="mono">accessorial_charges</td><td>Accessorial Total</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr class="maprow-missing"><td class="mono">dim_weight</td><td class="mcust-miss">— not in invoice</td><td><span class="pill bad">Missing</span></td><td class="map-cell"><button class="map-btn" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">+ Map</button></td></tr>
+                    <tr class="maprow-missing"><td class="mono">package_dims</td><td class="mcust-miss">— not in invoice</td><td><span class="pill bad">Missing</span></td><td class="map-cell"><button class="map-btn" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">+ Map</button></td></tr>
+                    <tr class="map-grp"><td colspan="4">Optional · nice to have</td></tr>
+                    <tr><td class="mono">customer_ref</td><td>Customer Ref</td><td><span class="pill ok">Available</span></td><td class="map-cell"><span class="remap" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">↻ Remap</span></td></tr>
+                    <tr class="maprow-missing"><td class="mono">residential_flag</td><td class="mcust-miss">— not in invoice</td><td><span class="pill bad">Missing</span></td><td class="map-cell"><button class="map-btn" onclick="if(window.showToast)showToast('Field mapping is simulated in this prototype')">+ Map</button></td></tr>
+                  </tbody>
+                </table></div>
+                <div class="viz-note" style="margin:12px 0 0">Unmapped customer columns available to capture: <span class="mono">entry_facility · sort_code · manifest_id · pickup_date · ref_2</span></div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-field" data-title="Map or provide the service-level field" data-desc="Service level is required but missing from the invoice export. Either map an existing column or add it to the export." data-prio="high" data-source="Required field missing" data-eta="5">
-                <div class="finding-head"><div class="ftitle">Required field ‘service level’ unmapped</div><div class="fimpact">−7% score</div></div>
-                <div class="fdesc">Service level is a required field but no candidate column was detected in the invoice export.</div>
+              <div class="finding sev-high" data-analysis="ax-field" data-title="Map or provide destination_zip (and dimensional fields)" data-desc="Required field destination_zip is not in the invoice; dim_weight, package_dims and residential_flag are also missing. Either map existing columns or add them to the export — they block DAS/EAS, dimensional-weight and residential audits." data-prio="high" data-source="Required field missing" data-eta="5" data-attach="Invoice export with destination_zip + dim fields">
+                <div class="finding-head"><div class="ftitle">Required field ‘destination_zip’ not in invoice</div><div class="fimpact">−7% score</div></div>
+                <div class="fdesc">destination_zip is required but absent; dim_weight, package_dims and residential_flag are missing too — blocking DAS/EAS, dim-weight and residential audits.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Service level is needed to match the correct rate and validate charges.</div>
+                <div class="fbiz"><b>Business impact:</b> Without these fields, several cost drivers can’t be validated at all.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-low" data-analysis="ax-field" data-title="Confirm optional fields to capture" data-desc="Three optional fields are available (declared value, insurance, reference 2). Confirm which to capture." data-prio="low" data-source="Optional fields available" data-eta="10">
-                <div class="finding-head"><div class="ftitle">3 optional fields available to capture</div><div class="fimpact">opportunity</div></div>
-                <div class="fdesc">Declared value, insurance, and a second reference column are present and could enrich reconciliation.</div>
+              <div class="finding sev-low" data-analysis="ax-field" data-title="Confirm optional columns to capture" data-desc="Five unmapped customer columns are available (entry_facility, sort_code, manifest_id, pickup_date, ref_2). Confirm which to capture." data-prio="low" data-source="Optional fields available" data-eta="10">
+                <div class="finding-head"><div class="ftitle">5 unmapped columns available to capture</div><div class="fimpact">opportunity</div></div>
+                <div class="fdesc">entry_facility, sort_code, manifest_id, pickup_date and ref_2 are present in the export and could enrich reconciliation.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> Optional, but capturing them improves downstream confidence.</div>
                 <div class="finding-actions">
@@ -1303,46 +1327,59 @@
             <div class="ablock primary">
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
-                <div class="viz-h"><span class="tag">Viz</span>Data quality metrics</div>
-                <div class="dq-grid">
-                  <div class="dq"><div class="top"><span class="val bad">9.8%</span><span class="k">Blank carrier (required)</span></div><div class="bar"><div class="fill bad" style="width:90%"></div></div></div>
-                  <div class="dq"><div class="top"><span class="val warn">3,200</span><span class="k">Tracking # in sci-notation</span></div><div class="bar"><div class="fill warn" style="width:55%"></div></div></div>
-                  <div class="dq"><div class="top"><span class="val warn">6.4%</span><span class="k">Duplicate order # (split ship)</span></div><div class="bar"><div class="fill warn" style="width:30%"></div></div></div>
-                  <div class="dq"><div class="top"><span class="val ok">217</span><span class="k">Credits / charges &lt; $5</span></div><div class="bar"><div class="fill ok" style="width:12%"></div></div></div>
+                <div class="viz-h"><span class="tag">Viz</span>Quality scan — 14,892 rows</div>
+                <div class="ds-tablewrap"><table>
+                  <thead><tr><th>Issue</th><th>Affected rows</th><th>Good vs affected</th><th>Severity</th></tr></thead>
+                  <tbody>
+                    <tr><td>VCN inconsistency (varied capitalization)</td><td>1,840 (12.4%)</td><td><div class="qbar"><i style="width:12.4%"></i></div></td><td><span class="pill warn">Med</span></td></tr>
+                    <tr class="qs-high"><td><span class="mono">service_level</span> not in standard list ("GRD")</td><td>312 (2.1%)</td><td><div class="qbar"><i style="width:2.1%"></i></div></td><td><span class="pill bad">High</span></td></tr>
+                    <tr class="qs-high"><td>Negative <span class="mono">net_charge</span> (credits un-matched)</td><td>211 (1.4%)</td><td><div class="qbar"><i style="width:1.4%"></i></div></td><td><span class="pill bad">High</span></td></tr>
+                    <tr><td>Missing <span class="mono">billed_weight</span></td><td>147 (1.0%)</td><td><div class="qbar"><i style="width:1%"></i></div></td><td><span class="pill warn">Med</span></td></tr>
+                    <tr><td><span class="mono">zone</span> = "—" / null</td><td>32 (0.2%)</td><td><div class="qbar"><i style="width:0.4%"></i></div></td><td><span class="pill warn">Med</span></td></tr>
+                    <tr><td>Duplicate <span class="mono">tracking_number</span></td><td>18 (0.1%)</td><td><div class="qbar"><i style="width:0.3%"></i></div></td><td><span class="pill warn">Med</span></td></tr>
+                  </tbody>
+                </table></div>
+                <div class="viz-sub-h">Unique identifiers &amp; split-ship</div>
+                <div class="qs-tiles">
+                  <div class="qs-tile"><div class="tv">99.1%</div><div class="tn">Rows with tracking</div></div>
+                  <div class="qs-tile"><div class="tv">7.2%</div><div class="tn">Split-ship rate</div></div>
+                  <div class="qs-tile"><div class="tv">18</div><div class="tn">Dup tracking</div></div>
+                  <div class="qs-tile"><div class="tv">211</div><div class="tn">Credit lines</div></div>
                 </div>
+                <div class="viz-note" style="margin:12px 0 0">Bar = affected (red) vs good (green) share of all 14,892 rows. Split-ship = same <span class="mono">order_id</span> across multiple package rows; recon de-dupes at order level.</div>
               </div>
-              <div class="finding sev-critical" data-analysis="ax-dq" data-title="Provide carrier + service-level on all rows" data-desc="412 rows (9.8%) have a blank carrier/service-level field. Please re-export with both populated for every row." data-prio="high" data-source="Blank carrier mapping" data-eta="3">
-                <div class="finding-head"><div class="ftitle">Blank carrier mapping on 9.8% of rows</div><div class="fimpact">−9% score</div></div>
-                <div class="fdesc">412 rows have an empty carrier / service-level field, so they can’t be priced against any rate card.</div>
+              <div class="finding sev-high" data-analysis="ax-dq" data-title="Re-match or explain negative net_charge credits" data-desc="211 rows (1.4%) carry a negative net_charge (credits) that don't match a prior charge. Please confirm how these credits should be reconciled." data-prio="high" data-source="Unmatched credits" data-eta="5">
+                <div class="finding-head"><div class="ftitle">Negative net_charge / un-matched credits</div><div class="fimpact">−5% score</div></div>
+                <div class="fdesc">211 rows carry a negative <b>net_charge</b> (credits) with no matching prior charge — they distort totals until reconciled.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Roughly 10% of volume can’t be reconciled until carrier is populated.</div>
+                <div class="fbiz"><b>Business impact:</b> Unmatched credits over- or under-state spend in the audit.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-dq" data-title="Re-export tracking numbers as plain text" data-desc="Tracking numbers were exported in scientific notation. Please re-export the column formatted as text." data-prio="high" data-source="Tracking format" data-eta="3">
-                <div class="finding-head"><div class="ftitle">Tracking numbers in scientific notation</div><div class="fimpact">−6% score</div></div>
-                <div class="fdesc">~3,200 rows exported tracking numbers as 1.2E+11, breaking joins and lookups.</div>
+              <div class="finding sev-high" data-analysis="ax-dq" data-title="Standardize non-standard service_level values" data-desc="312 rows (2.1%) use service-level codes outside the standard list (e.g. \"GRD\"). Please re-export with standard service-level names." data-prio="high" data-source="Non-standard service level" data-eta="3" data-attach="Re-exported invoice (standard service levels)">
+                <div class="finding-head"><div class="ftitle">service_level not in the standard list</div><div class="fimpact">−4% score</div></div>
+                <div class="fdesc">312 rows use non-standard codes (e.g. <b>"GRD"</b>) that don’t map to a known service level, blocking rate lookup.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Sci-notation IDs silently fail to match support data and carrier records.</div>
+                <div class="fbiz"><b>Business impact:</b> Non-standard service levels can’t be priced against the correct card.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-medium" data-analysis="ax-dq" data-title="Confirm split-ship handling" data-desc="Some order numbers repeat across rows. Confirm these are split shipments so we don’t double-count." data-prio="medium" data-source="Duplicate order numbers" data-eta="5">
-                <div class="finding-head"><div class="ftitle">Duplicate order numbers (split ships)</div><div class="fimpact">−2% score</div></div>
-                <div class="fdesc">6.4% of order numbers repeat — likely legitimate split shipments rather than errors.</div>
+              <div class="finding sev-medium" data-analysis="ax-dq" data-title="Normalize VCN carrier capitalization" data-desc="1,840 rows (12.4%) vary in carrier-name capitalization under the VCN. Please provide a canonical carrier mapping or a normalized re-export." data-prio="medium" data-source="VCN inconsistency" data-eta="5">
+                <div class="finding-head"><div class="ftitle">VCN carrier-name capitalization inconsistency</div><div class="fimpact">−2% score</div></div>
+                <div class="fdesc">1,840 rows vary in how the same carrier is capitalized, splitting one carrier into several in aggregates.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Needs confirmation so split ships aren’t double-counted.</div>
+                <div class="fbiz"><b>Business impact:</b> Carrier-level totals are wrong until labels are normalized (ties to the Invoice Type VCN finding).</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-low" data-analysis="ax-dq" data-title="Confirm scope for sub-$5 credits" data-desc="217 lines are negative or under $5. Confirm whether they should be included in reconciliation." data-prio="low" data-source="Credits / adjustments" data-eta="10">
-                <div class="finding-head"><div class="ftitle">Credits & charges under $5</div><div class="fimpact">−1% score</div></div>
-                <div class="fdesc">217 lines are negative or under $5 (credits/adjustments).</div>
+              <div class="finding sev-low" data-analysis="ax-dq" data-title="Confirm minor field gaps" data-desc="Missing billed_weight (147 rows), null zone (32 rows) and duplicate tracking_number (18 rows) each affect under 1% of rows. Please confirm how to handle them." data-prio="low" data-source="Minor field gaps" data-eta="10">
+                <div class="finding-head"><div class="ftitle">Minor field gaps (&lt;1% each)</div><div class="fimpact">−1% score</div></div>
+                <div class="fdesc">Missing <b>billed_weight</b> (147), null <b>zone</b> (32) and duplicate <b>tracking_number</b> (18) are small but should be confirmed.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> Confirm whether these belong in the reconciliation scope.</div>
+                <div class="fbiz"><b>Business impact:</b> Low volume, but each blocks the affected rows from reconciling.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
@@ -1412,29 +1449,29 @@
               <h5><span class="pin"></span>Findings</h5>
               <div class="viz">
                 <div class="viz-h"><span class="tag">AI</span>Unstructured cross-analysis review</div>
-                <div class="ai-narrative">Across all eight structured analyses, <b>two root causes</b> drive most of the score loss: the <b>missing DHL rate card and Apr-13 invoice week</b>, and a <b>tracking-number formatting issue</b> that cascades into both the Join and Data Quality analyses. Resolving these two items is projected to lift the overall intake from <b>73%</b> to roughly <b>88%</b>. No anomalies were found suggesting data tampering or carrier misclassification.</div>
+                <div class="ai-narrative">Across all eight structured analyses, <b>two root causes</b> drive most of the score loss. First, two <b>missing rate cards</b> — UPS SurePost (3,341 shipments) and DHL eCom SmartMail (341 shipments) — plus the <b>missing DHL invoice for the week of Apr 13</b> cascade into the Effective Date, Comprehensiveness and Time-Period analyses. Second, a <b>VCN capitalization inconsistency</b> (1,840 rows) and <b>non-standard service_level values</b> (312 rows) lower both the Invoice Type and Data Quality scores. Resolving these two themes is projected to lift the overall intake from <b>73%</b> to roughly <b>88%</b>. No anomalies were found suggesting data tampering or carrier misclassification.</div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-ai" data-title="Bundle all DHL gaps into one client request" data-desc="DHL is missing a rate card and one invoice week, affecting three analyses. Request both together: the DHL eCommerce rate card and the Apr-13 invoice." data-prio="high" data-source="Cross-analysis: DHL" data-eta="3" data-attach="DHL rate card">
-                <div class="finding-head"><div class="ftitle">DHL is the dominant blocker across the intake</div><div class="fimpact">spans 3 analyses</div></div>
-                <div class="fdesc">DHL gaps appear in Rate Card Effective Date, Comprehensiveness, and Invoice Time-Period — one carrier drives multiple low scores.</div>
+              <div class="finding sev-high" data-analysis="ax-ai" data-title="Bundle the missing rate cards + DHL invoice into one request" data-desc="UPS SurePost and DHL SmartMail have no rate card, and the DHL invoice for the week of Apr 13 is missing — these drive low scores across Effective Date, Comprehensiveness and Time-Period. Request all three together." data-prio="high" data-source="Cross-analysis: missing cards" data-eta="3" data-attach="UPS SurePost + DHL cards + Apr-13 invoice">
+                <div class="finding-head"><div class="ftitle">Missing cards are the dominant blocker across the intake</div><div class="fimpact">spans 3 analyses</div></div>
+                <div class="fdesc">The two missing rate cards and the Apr-13 DHL invoice appear in Effective Date, Comprehensiveness and Time-Period — a few items drive multiple low scores.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> A single client request (DHL rate card + missing invoice) resolves issues in three analyses at once.</div>
+                <div class="fbiz"><b>Business impact:</b> One consolidated request (two cards + one invoice) resolves issues in three analyses at once.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-high" data-analysis="ax-ai" data-title="Single clean re-export fixes two analyses" data-desc="Re-exporting tracking numbers as plain text raises both the join rate and data-quality score. Request one corrected export." data-prio="high" data-source="Cross-analysis: tracking format" data-eta="3">
-                <div class="finding-head"><div class="ftitle">Tracking-format issue cascades into Join + Data Quality</div><div class="fimpact">spans 2 analyses</div></div>
-                <div class="fdesc">Scientific-notation tracking numbers lower both the join rate and data-quality score.</div>
+              <div class="finding sev-high" data-analysis="ax-ai" data-title="One standardized re-export fixes naming across analyses" data-desc="Normalizing VCN carrier capitalization (1,840 rows) and non-standard service_level values (312 rows) clears findings in both Invoice Type and Data Quality. Request one corrected export." data-prio="high" data-source="Cross-analysis: naming" data-eta="3">
+                <div class="finding-head"><div class="ftitle">VCN + service_level naming cascades into Type + Data Quality</div><div class="fimpact">spans 2 analyses</div></div>
+                <div class="fdesc">Inconsistent VCN capitalization and non-standard service levels lower both the Invoice Type and Data Quality scores.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
-                <div class="fbiz"><b>Business impact:</b> One clean re-export improves two analyses simultaneously.</div>
+                <div class="fbiz"><b>Business impact:</b> One standardized re-export improves two analyses simultaneously.</div>
                 <div class="finding-actions">
                   <button class="fa req" onclick="createClientRequest(this)">Create client request</button>
                 </div>
               </div>
-              <div class="finding sev-low" data-analysis="ax-ai" data-title="Track projected score after fixes" data-desc="No client action needed — internal note that two requests are projected to lift the score to ~88%." data-prio="low" data-source="Cross-analysis: projection" data-eta="10">
+              <div class="finding sev-low" data-analysis="ax-ai" data-title="Track projected score after fixes" data-desc="No customer action needed — internal note that the two consolidated fixes are projected to lift the score to ~88%." data-prio="low" data-source="Cross-analysis: projection" data-eta="10">
                 <div class="finding-head"><div class="ftitle">Projected +15% from two consolidated fixes</div><div class="fimpact">opportunity</div></div>
-                <div class="fdesc">If the DHL bundle and the clean re-export are completed, projected overall score rises ~73% → ~88%.</div>
+                <div class="fdesc">If the missing-cards bundle and the standardized re-export are completed, projected overall score rises ~73% → ~88%.</div>
                 <button class="biz-toggle" onclick="toggleBiz(this)">Show business impact</button>
                 <div class="fbiz"><b>Business impact:</b> Helps prioritize which client requests unblock onboarding fastest.</div>
                 <div class="finding-actions">
@@ -1615,6 +1652,7 @@
 <script src="assets/js/template-view.js"></script>
 <script src="assets/js/findings-triage.js"></script>
 <script src="assets/js/report-card.js"></script>
+<script src="assets/js/analysis-viz.js"></script>
 <script src="assets/js/init.js"></script>
 </body>
 </html>

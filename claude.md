@@ -29,6 +29,7 @@ relevant to a change:
 | `assets/js/template-view.js` | 3 | View Mode: real data ⇄ template/blueprint |
 | `assets/js/findings-triage.js` | 4+5 | finding triage (ignore-with-reason), business impact toggle, section-level request |
 | `assets/js/report-card.js` | 6 | customer-facing Report Card (Page 4) |
+| `assets/js/analysis-viz.js` | — | renders the two **interactive** Findings viz: Effective Date (`#ax-eff`) day-strips + linked gap table, and Quality (`#ax-qual`) per-card scan. Self-contained IIFE, own `DOMContentLoaded`. |
 | `assets/js/init.js` | 7 | `biMore` + `DOMContentLoaded` init (`updateOverview()`) |
 
 ### Why the split is safe (don't break it)
@@ -39,7 +40,7 @@ exact same global lexical environment, so cross-file references still work (e.g.
 
 - **Never add `type="module"`** to these tags — that would isolate each file's scope and break everything.
 - **Keep the load order** in `index.html` (intake-setup → report-workflow → template-view →
-  findings-triage → report-card → init). Functions are called at runtime (event handlers / `DOMContentLoaded`),
+  findings-triage → report-card → analysis-viz → init). Functions are called at runtime (event handlers / `DOMContentLoaded`),
   so definition order rarely matters, but top-level executing code relies on the order above.
 - A symbol defined at top level with `const`/`let` is global and **must be unique across all JS files**
   (re-declaring the same name in another file is a runtime error).

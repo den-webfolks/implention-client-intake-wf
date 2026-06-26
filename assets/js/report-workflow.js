@@ -287,6 +287,7 @@
   }
 
   // ===== Tabbed workspace =====
+  let bucketAutoCollapsed = false;
   function switchVTab(name) {
     document.querySelectorAll('#page-3 .vtab').forEach(b => b.classList.toggle('active', b.dataset.vtab === name));
     document.querySelectorAll('#page-3 .vtab-panel').forEach(pn => pn.classList.remove('active'));
@@ -301,7 +302,18 @@
     const addBtn = document.querySelector('.ca-add');
     if (addBtn) { addBtn.style.display = intakeSent ? 'none' : ''; addBtn.classList.remove('supp'); }
     const rd = document.querySelector('#page-3 .vtab[data-vtab="response"]'); if (rd) rd.classList.toggle('has-data', requests.some(r => r.sent));
+    // The bucket is collapsible at any time. Sending the package auto-collapses it ONCE
+    // as a convenience; after that the user controls it freely.
+    if (intakeSent && !bucketAutoCollapsed) { bucketAutoCollapsed = true; setBucketCollapsed(true); }
   }
+  function setBucketCollapsed(collapsed) {
+    const layout = document.querySelector('#page-3 .ir-layout');
+    if (layout) layout.classList.toggle('bucket-collapsed', collapsed);
+    const btn = document.getElementById('bucket-toggle');
+    if (btn) { btn.textContent = collapsed ? 'Show bucket' : 'Hide bucket'; btn.classList.toggle('is-collapsed', collapsed); }
+  }
+  function bucketIsCollapsed() { const l = document.querySelector('#page-3 .ir-layout'); return !!(l && l.classList.contains('bucket-collapsed')); }
+  function toggleBucket() { setBucketCollapsed(!bucketIsCollapsed()); }
 
   // ---- Request lifecycle stats (Done / Acknowledged / Deflected) ----
   const CST = { 'Pending': 'cst-pending', 'Done': 'cst-done', 'Acknowledged': 'cst-ack', 'Deflected': 'cst-deflected' };
@@ -338,13 +350,41 @@
     if (r.respStatus === 'Deflected') return 'Closed';
     return 'Pending';
   }
-  function trackRow(r) {
+  function trackRow(r, i) {
     const sevLbl = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
     const lbl = trackStatusLabel(r);
-    return '<tr><td class="rt-name">' + esc(r.name || 'Untitled request') + '</td>'
+    const main = '<tr class="rt-row" onclick="toggleTrackRow(' + i + ')">'
+      + '<td class="rt-name"><span class="rt-caret" id="rt-caret-' + i + '">\u203a</span>' + esc(r.name || 'Untitled request') + '</td>'
       + '<td>' + (sevLbl[r.severity] || 'Medium') + '</td>'
       + '<td><span class="cst ' + (TRACK_CLS[lbl] || 'cst-pending') + '">' + esc(lbl) + '</span></td>'
       + '<td class="rt-upd">' + esc(isHandled(r) ? (r.lastUpdated || SUBMIT_DATE) : '\u2014') + '</td></tr>';
+    return main + '<tr class="rt-detail" id="rt-detail-' + i + '"><td colspan="4">' + trackDetailHTML(r) + '</td></tr>';
+  }
+  // Expanded detail for a tracking row \u2014 surfaces the full builder data the columns can't show.
+  function trackDetailHTML(r) {
+    const typeLbl = r.reqType === 'replace' ? 'Replace existing file'
+      : (r.reqType === 'clarify' || !r.fileRequired ? 'Provide clarification (no file)' : 'Upload missing file');
+    let h = '<div class="rt-det">';
+    if (r.desc) h += '<div class="rt-det-row"><span class="rt-det-k">Description</span><div class="rt-det-v">' + esc(r.desc) + '</div></div>';
+    h += '<div class="rt-det-row"><span class="rt-det-k">Request type</span><div class="rt-det-v">' + esc(typeLbl)
+      + '<div class="rt-det-hint">' + esc(reqTypeHint(r.reqType || (r.fileRequired ? 'upload' : 'clarify'))) + '</div></div></div>';
+    if (r.reqType === 'replace' && r.targetFile)
+      h += '<div class="rt-det-row"><span class="rt-det-k">File being replaced</span><div class="rt-det-v"><span class="mono">' + esc(r.targetFile) + '</span></div></div>';
+    if (r.note)
+      h += '<div class="rt-det-row"><span class="rt-det-k">Internal note</span><div class="rt-det-v"><span class="rt-det-int">Internal \u00b7 not shown to customer</span>' + esc(r.note) + '</div></div>';
+    h += '<div class="rt-det-row"><span class="rt-det-k">Source finding</span><div class="rt-det-v">'
+      + (r.analysis
+        ? '<a class="rq-source" href="#" data-analysis="' + esc(r.analysis) + '" data-source="' + esc(r.source || '') + '" onclick="gotoFindingFromTrack(this);return false;">\u21b3 source finding: ' + esc(r.source || r.analysis) + '</a>'
+        : '<span class="rq-source none">\u21b3 no linked finding</span>')
+      + '</div></div>';
+    return h + '</div>';
+  }
+  function toggleTrackRow(i) {
+    const det = document.getElementById('rt-detail-' + i);
+    const car = document.getElementById('rt-caret-' + i);
+    if (!det) return;
+    const open = det.classList.toggle('show');
+    if (car) car.classList.toggle('open', open);
   }
   // Customer-response activity entry (type-aware) for a handled request.
   function activityFor(r) {
@@ -388,7 +428,7 @@
     const table = '<div class="resp-pkg">'
       + '<div class="rp-head"><b>Request tracking</b><span>' + sent.length + ' request' + (sent.length !== 1 ? 's' : '') + '</span></div>'
       + '<table class="resp-table"><thead><tr><th>Request</th><th>Severity</th><th>Status</th><th>Last Updated</th></tr></thead><tbody>'
-      + sent.map(r => trackRow(r)).join('') + '</tbody></table></div>';
+      + sent.map((r, i) => trackRow(r, i)).join('') + '</tbody></table></div>';
     // Customer Response Activity
     const acted = sent.filter(r => isHandled(r));
     let act = '<div class="resp-pkg"><div class="rp-head"><b>Customer response activity</b><span>'
@@ -561,17 +601,17 @@
   function setBucketUrgency(v) { bucketUrgency = v; if (typeof showToast === 'function') showToast('Response urgency for package: ' + v); }
 
   let requests = [
-    { name: 'Upload missing DHL eCommerce rate card',
-      desc: 'No DHL eCommerce rate card is on file for the lookback period. Please upload a card effective across the full window so DHL shipments can be priced.',
-      severity: 'high', fileRequired: true,
-      fileContext: { mode: 'upload', file: 'DHL eCommerce Rate Card' },
-      note: 'Known DHL onboarding issue — follow up with Eric if the file is not received.',
-      source: 'Missing DHL carrier coverage', analysis: 'ax-eff', status: 'queued' },
-    { name: 'Provide FedEx Ground coverage (Feb 12–18)',
-      desc: 'We have no FedEx Ground rate card effective for Feb 12–18, 2026. Please provide a card covering that window.',
-      severity: 'high', fileRequired: true,
-      fileContext: { mode: 'upload', file: 'FedEx Ground rate card (Feb 12–18)' },
-      note: '', source: 'Missing FedEx Ground coverage', analysis: 'ax-eff', status: 'queued' },
+    { name: 'Provide UPS SurePost & DHL eCommerce rate cards',
+      desc: 'No effective rate card exists for UPS SurePost (3,341 shipments) or DHL eCom SmartMail (341 shipments) anywhere in the 90-day lookback. Please supply current cards effective across the window so these shipments can be priced.',
+      severity: 'critical', fileRequired: true, reqType: 'upload',
+      fileContext: { mode: 'upload', file: 'UPS SurePost + DHL eCommerce rate cards' },
+      note: 'Two largest coverage gaps — follow up if the cards are not received.',
+      source: 'No effective card', analysis: 'ax-eff', status: 'queued' },
+    { name: 'Provide 2026 FedEx SmartPost rate card',
+      desc: 'The FedEx SmartPost card expired 12/31/2025 — there is no effective card after that date for 200 SmartPost shipments. Please supply a 2026 card.',
+      severity: 'medium', fileRequired: true, reqType: 'upload',
+      fileContext: { mode: 'upload', file: 'FedEx SmartPost 2026 rate card' },
+      note: '', source: 'Expired SmartPost card', analysis: 'ax-eff', status: 'queued' },
   ];
 
   function renderRequests() {
@@ -685,6 +725,11 @@
     const wrap = btn.closest('.rq-internal');
     wrap.classList.add('open');
     const ta = wrap.querySelector('.rq-note'); if (ta) ta.focus();
+  }
+  // Same as gotoFindingFromEl but invoked from the Requests tab — switch to Review first.
+  function gotoFindingFromTrack(el) {
+    if (typeof switchVTab === 'function') switchVTab('review');
+    setTimeout(() => gotoFindingFromEl(el), 60);
   }
   function gotoFindingFromEl(el) {
     const analysis = el.dataset.analysis, source = el.dataset.source;
