@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/styles.css" />
+<link rel="stylesheet" href="assets/styles.css?v=27" />
 </head>
 <body>
 
@@ -20,10 +20,8 @@
   <div class="demo-nav-right">
     <div class="steps">
       <button class="step-btn active" data-step="0"><span class="num">00</span>Admin Setup</button>
-      <button class="step-btn" data-step="1"><span class="num">01</span>Customer Upload</button>
-      <button class="step-btn" data-step="2"><span class="num">02</span>Upload Summary</button>
-      <button class="step-btn" data-step="3"><span class="num">03</span>Internal Report</button>
-      <button class="step-btn" data-step="4"><span class="num">04</span>Report Card</button>
+      <button class="step-btn" data-step="customer"><span class="num">01</span>Customer Workspace</button>
+      <button class="step-btn" data-step="3"><span class="num">02</span>Internal Report</button>
     </div>
   </div>
 </div>
@@ -149,17 +147,20 @@
   </div>
 </div>
 
-<!-- ============== PAGE 1: CUSTOMER UPLOAD ============== -->
+<!-- ============== PAGE 1: CUSTOMER WORKSPACE — initial (upload) state ============== -->
 <div class="page" id="page-1">
   <div class="container narrow">
+    <!-- demo state bar (rendered by customer-workspace.js) so all states stay testable from the upload -->
+    <div id="cw-intake-top"></div>
     <div class="upload-header">
       <div class="brand">Implentio</div>
+      <div class="cw-intake-eyebrow">Customer Workspace · New intake · No version yet</div>
       <div class="for-line">
-        Data intake for <strong id="up-customer">Tushy</strong> · 3PL: <strong id="up-3pl">ShipBob</strong>
+        Data intake for <strong id="up-customer">Tushy</strong> × <strong id="up-3pl">ShipBob</strong>
       </div>
       <h1>Let's get your data in.</h1>
       <p class="lede" style="margin: 18px auto 0;">
-        Upload the files below for your <strong style="color: var(--ink);"><span id="up-customer-2">Tushy</span> × <span id="up-3pl-2">ShipBob</span></strong> account. We'll review what you send and come back within 48 hours with a reconciliation readiness report.
+        Upload the files below so we can review your billing, rate cards, and supporting data for your <strong style="color: var(--ink);"><span id="up-customer-2">Tushy</span> × <span id="up-3pl-2">ShipBob</span></strong> account. Once you submit, we'll review and return with next steps.
       </p>
     </div>
 
@@ -180,15 +181,6 @@
             <div class="file-list"></div>
           </div>
           <div class="status">Choose files</div>
-          <div class="na-toggle" onclick="event.stopPropagation()">
-            <label>
-              <input type="checkbox" onchange="toggleNA(this)" />
-              N/A
-              <span class="info">?
-                <span class="tooltip">Check this if you don't have parcel rate cards separately — for example if your 3PL bills you a combined invoice that already includes parcel charges.</span>
-              </span>
-            </label>
-          </div>
         </div>
 
         <div class="upload-tile" data-type="parcel-invoices" data-files='[{"name":"UPS_Invoice_W08-W19.csv (×6 weeks)","size":"9,412 shp"},{"name":"FedEx_Invoice_Feb-May_2025.csv (×3 files)","size":"3,128 shp"},{"name":"USPS_PCMiler_Invoice_Apr_2025.csv","size":"2,011 shp"},{"name":"DHL_Invoice_Mar2025.pdf","size":"341 shp"}]'>
@@ -199,15 +191,6 @@
             <div class="file-list"></div>
           </div>
           <div class="status">Choose files</div>
-          <div class="na-toggle" onclick="event.stopPropagation()">
-            <label>
-              <input type="checkbox" onchange="toggleNA(this)" />
-              N/A
-              <span class="info">?
-                <span class="tooltip">Check this if you receive a combined 3PL invoice that bundles parcel charges with fulfillment fees rather than separate carrier invoices.</span>
-              </span>
-            </label>
-          </div>
         </div>
 
       </div>
@@ -230,15 +213,6 @@
             <div class="file-list"></div>
           </div>
           <div class="status">Choose files</div>
-          <div class="na-toggle" onclick="event.stopPropagation()">
-            <label>
-              <input type="checkbox" onchange="toggleNA(this)" />
-              N/A
-              <span class="info">?
-                <span class="tooltip">Check this if rates are embedded in your master 3PL contract and you don't have a separate rate card document.</span>
-              </span>
-            </label>
-          </div>
         </div>
 
         <div class="upload-tile" data-type="fulfillment-invoices" data-files='[{"name":"ShipBob_Invoice_Feb_2025.pdf","size":"$42,180"},{"name":"ShipBob_Invoice_Mar_2025.pdf","size":"$38,915"},{"name":"ShipBob_Invoice_Apr_2025.pdf","size":"$45,402"},{"name":"ShipBob_Activity_Detail_Q1.csv","size":"18,224 rows"}]'>
@@ -249,15 +223,6 @@
             <div class="file-list"></div>
           </div>
           <div class="status">Choose files</div>
-          <div class="na-toggle" onclick="event.stopPropagation()">
-            <label>
-              <input type="checkbox" onchange="toggleNA(this)" />
-              N/A
-              <span class="info">?
-                <span class="tooltip">Check this if your 3PL bills only as part of a combined parcel+fulfillment invoice (already provided under Parcel Invoices).</span>
-              </span>
-            </label>
-          </div>
         </div>
 
       </div>
@@ -335,178 +300,12 @@
   <input type="file" id="real-file-picker" multiple style="display: none;" onchange="handleRealFiles(this)" />
 </div>
 
-<!-- ============== PAGE 2: UPLOAD SUMMARY ============== -->
+<!-- ============== PAGE 2: CUSTOMER WORKSPACE (live states 2–5) ============== -->
 <div class="page" id="page-2">
   <div class="container narrow">
-    <div style="margin-bottom: 36px;">
-      <div class="eyebrow" style="margin-bottom: 14px;">Customer view — Upload confirmation</div>
-      <h1>Thanks, <span id="sum-customer">Tushy</span>. Here's what we received.</h1>
-      <p class="lede" style="margin-top: 14px;">
-        Files for your <strong style="color: var(--ink);"><span id="sum-customer-2">Tushy</span> × <span id="sum-3pl">ShipBob</span></strong> account are in. Tap any row to see what came through. Our team is reviewing now — we'll be in touch within 2 business days.
-      </p>
-    </div>
-
-    <div class="summary-section-label">Parcel</div>
-    <div class="summary-list">
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Parcel Rate Cards</div>
-            <div class="file-meta">Uploaded May 18 · 4 files · 1.1 MB</div>
-          </div>
-          <div class="right">
-            <div class="count">4 carriers</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">UPS_RateCard_2025_Q2.xlsx</span><span class="info">312 KB · 4 service levels</span></div>
-          <div class="files-row"><span class="name">FedEx_RateCard_2025.xlsx</span><span class="info">298 KB · 3 service levels</span></div>
-          <div class="files-row"><span class="name">USPS_RateCard_2025.pdf</span><span class="info">241 KB · 2 service levels</span></div>
-          <div class="files-row"><span class="name">DHL_eCommerce_Rates_2025.xlsx</span><span class="info">189 KB · 1 service level</span></div>
-        </div>
-      </div>
-
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Parcel Invoices</div>
-            <div class="file-meta">Uploaded May 18 · 11 files · 24.8 MB</div>
-          </div>
-          <div class="right">
-            <div class="count">14,892 shipments</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">UPS_Invoice_W08-W19.csv (×6 weeks)</span><span class="info">9,412 shipments</span></div>
-          <div class="files-row"><span class="name">FedEx_Invoice_Feb-May_2025.csv (×3 files)</span><span class="info">3,128 shipments</span></div>
-          <div class="files-row"><span class="name">USPS_PCMiler_Invoice_Apr_2025.csv</span><span class="info">2,011 shipments</span></div>
-          <div class="files-row"><span class="name">DHL_Invoice_Mar2025.pdf</span><span class="info">341 shipments</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="summary-section-label">Fulfillment</div>
-    <div class="summary-list">
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Fulfillment Rate Cards</div>
-            <div class="file-meta">Uploaded May 18 · 3 files · 814 KB</div>
-          </div>
-          <div class="right">
-            <div class="count">3 rate sheets</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">ShipBob_Fulfillment_Rates_2025.pdf</span><span class="info">412 KB · pick/pack/receive</span></div>
-          <div class="files-row"><span class="name">ShipBob_Storage_Rates_2025.xlsx</span><span class="info">118 KB · monthly storage</span></div>
-          <div class="files-row"><span class="name">ShipBob_SpecialProjects_SOW.pdf</span><span class="info">284 KB · kitting, project work</span></div>
-        </div>
-      </div>
-
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Fulfillment Invoices</div>
-            <div class="file-meta">Uploaded May 18 · 4 files · 8.2 MB</div>
-          </div>
-          <div class="right">
-            <div class="count">$126,497 billed</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">ShipBob_Invoice_Feb_2025.pdf</span><span class="info">$42,180</span></div>
-          <div class="files-row"><span class="name">ShipBob_Invoice_Mar_2025.pdf</span><span class="info">$38,915</span></div>
-          <div class="files-row"><span class="name">ShipBob_Invoice_Apr_2025.pdf</span><span class="info">$45,402</span></div>
-          <div class="files-row"><span class="name">ShipBob_Activity_Detail_Q1.csv</span><span class="info">18,224 rows · line-item detail</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="summary-section-label">Contracts &amp; Reference</div>
-    <div class="summary-list">
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">3PL Contract</div>
-            <div class="file-meta">Uploaded May 18 · 2.4 MB</div>
-          </div>
-          <div class="right">
-            <div class="count">1 file</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">ShipBob_MSA_2025_executed.pdf</span><span class="info">2.4 MB · 47 pages</span></div>
-        </div>
-      </div>
-
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Product Master</div>
-            <div class="file-meta">Uploaded May 18 · 1 file · 842 KB</div>
-          </div>
-          <div class="right">
-            <div class="count">1,247 SKUs</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">product_master_full_v3.csv</span><span class="info">1,247 rows · 14 columns</span></div>
-        </div>
-      </div>
-
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Bundle Map</div>
-            <div class="file-meta">Uploaded May 18 · 86 KB</div>
-          </div>
-          <div class="right">
-            <div class="count">142 bundles</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">bundle_kit_mapping_2025.xlsx</span><span class="info">142 bundles · 318 components</span></div>
-        </div>
-      </div>
-
-      <div class="summary-item" onclick="toggleSummary(this, event)">
-        <div class="summary-row">
-          <div class="check">✓</div>
-          <div>
-            <div class="file-name">Other Files</div>
-            <div class="file-meta">Uploaded May 18 · 2 files · 1.8 MB</div>
-          </div>
-          <div class="right">
-            <div class="count">2 files</div>
-            <div class="chev">▾</div>
-          </div>
-        </div>
-        <div class="summary-detail">
-          <div class="files-row"><span class="name">packaging_guide_2025.pdf</span><span class="info">1.2 MB</span></div>
-          <div class="files-row"><span class="name">3pl_zone_warehouse_map.xlsx</span><span class="info">612 KB</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div style="text-align: center; margin-top: 36px;">
-      <button class="btn secondary" onclick="goTo(1)">← Back to upload</button>
-      <button class="btn" onclick="goTo(3)" style="margin-left: 8px;">Continue (preview Implentio view) →</button>
-    </div>
+    <!-- Customer Intake Workspace — state-driven (Under review / Action required / Ready for onboarding).
+         Rendered by renderCustomerWorkspace() in assets/js/customer-workspace.js -->
+    <div id="cw-root"></div>
   </div>
 </div>
 
@@ -546,6 +345,7 @@
     <div class="vtabs" id="vtabs">
       <button class="vtab active" data-vtab="review" onclick="switchVTab('review')">Review</button>
       <button class="vtab" data-vtab="response" onclick="switchVTab('response')">Requests</button>
+      <button class="vtab" data-vtab="customer" onclick="switchVTab('customer')">Customer View</button>
       <button class="bucket-toggle" id="bucket-toggle" onclick="toggleBucket()">Hide bucket</button>
     </div>
 
@@ -1559,27 +1359,22 @@
     <div class="vtab-panel" id="tab-response">
       <div id="resp-root"></div>
     </div>
+
+    <div class="vtab-panel" id="tab-customer">
+      <div id="cust-root"></div>
+    </div>
   </div>
 </div>
 
 
-<!-- ============== PAGE 4: REPORT CARD ============== -->
-<div class="page" id="page-4">
-  <div class="container narrow">
-    <!-- Client Report Card = the shared customer experience, rendered by customerExperienceHTML() -->
-    <div class="report-doc">
-      <div id="rc-doc"></div>
-      <div class="rc-about">
-        <strong>About this report.</strong> Prepared by Implentio's onboarding team based on the files submitted for the <span class="cust-name">Tushy</span> × <span class="rep-3pl-name">ShipBob</span> account. A complete audit begins once the outstanding items above are provided. Questions: <span class="mono">youssef@implentio.com</span>.
-      </div>
-    </div>
-
-    <!-- Client submit action (customer sends their uploads / replies back to Implentio) -->
-    <div class="report-actions rc-client-actions">
-      <div class="info"><strong>Ready to respond?</strong> Upload the requested files and add any replies above, then submit them to the Implentio onboarding team.</div>
-      <div class="actions-r">
-        <button class="btn" onclick="submitCustomerResponses()">Submit responses to Implentio</button>
-      </div>
+<!-- Customer "Submit updates" confirmation (creates the next version) -->
+<div class="modal-bg" id="cw-submit-modal">
+  <div class="modal">
+    <h3>Submit updates for review?</h3>
+    <p class="sub" id="cw-submit-body"></p>
+    <div class="rvm-actions">
+      <button class="btn secondary" onclick="cwCloseSubmitModal()">Cancel</button>
+      <button class="btn" id="cw-submit-confirm" onclick="cwConfirmSubmit()">Submit Version 2</button>
     </div>
   </div>
 </div>
@@ -1647,12 +1442,13 @@
 
 
 
-<script src="assets/js/intake-setup.js"></script>
-<script src="assets/js/report-workflow.js"></script>
-<script src="assets/js/template-view.js"></script>
-<script src="assets/js/findings-triage.js"></script>
-<script src="assets/js/report-card.js"></script>
-<script src="assets/js/analysis-viz.js"></script>
-<script src="assets/js/init.js"></script>
+<script src="assets/js/intake-setup.js?v=27"></script>
+<script src="assets/js/report-workflow.js?v=27"></script>
+<script src="assets/js/template-view.js?v=27"></script>
+<script src="assets/js/findings-triage.js?v=27"></script>
+<script src="assets/js/report-card.js?v=27"></script>
+<script src="assets/js/customer-workspace.js?v=27"></script>
+<script src="assets/js/analysis-viz.js?v=27"></script>
+<script src="assets/js/init.js?v=27"></script>
 </body>
 </html>

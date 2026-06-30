@@ -15,12 +15,24 @@
   function goTo(n) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + n).classList.add('active');
-    document.querySelectorAll('.step-btn').forEach(b => b.classList.toggle('active', b.dataset.step == n));
+    // The single "Customer Workspace" nav entry covers both the upload (page-1) and the live states (page-2).
+    document.querySelectorAll('.step-btn').forEach(b => {
+      const s = b.dataset.step;
+      b.classList.toggle('active', s == n || (s === 'customer' && (n == 1 || n == 2)));
+    });
     document.getElementById('ctx-strip').style.display = n == 0 ? 'none' : 'flex';
     syncContext();
+    // Keep the Customer Workspace surfaces in sync with the current state whenever shown.
+    if (n == 1 && typeof cwRenderIntakeTop === 'function') cwRenderIntakeTop();
+    if (n == 2 && typeof renderCustomerWorkspace === 'function') renderCustomerWorkspace();
     window.scrollTo({top: 0, behavior: 'smooth'});
   }
-  document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', () => goTo(b.dataset.step)));
+  // The Customer Workspace entry routes to the upload (initial) or the live states by submission status.
+  document.querySelectorAll('.step-btn').forEach(b => b.addEventListener('click', () => {
+    const s = b.dataset.step;
+    if (s === 'customer') goTo((typeof cwVer !== 'undefined' && cwVer > 0) ? 2 : 1);
+    else goTo(s);
+  }));
 
   // ===== Sync customer/3PL across all pages =====
   function syncContext() {
@@ -44,17 +56,15 @@
     document.getElementById('up-3pl').textContent = state.threePL;
     document.getElementById('up-3pl-2').textContent = state.threePL;
 
-    // Page 2
-    document.getElementById('sum-customer').textContent = state.customer;
-    document.getElementById('sum-customer-2').textContent = state.customer;
-    document.getElementById('sum-3pl').textContent = state.threePL;
+    // Page 2 (Customer Workspace) is rendered dynamically by customer-workspace.js — no static fields to sync.
 
-    // Page 3
-    document.getElementById('int-customer').textContent = state.customer;
-    document.getElementById('int-3pl').textContent = state.threePL;
-    document.getElementById('int-eng').textContent = state.engineer.split(' ').map((w,i,a) => i === a.length - 1 ? w[0] + '.' : w).join(' ');
+    // Page 3 (Internal Report) — guarded in case an element is absent.
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('int-customer', state.customer);
+    setTxt('int-3pl', state.threePL);
+    setTxt('int-eng', state.engineer.split(' ').map((w,i,a) => i === a.length - 1 ? w[0] + '.' : w).join(' '));
 
-    // Page 4 (report card uses .cust-name / .rep-3pl-name classes)
+    // Customer-name placeholders used across surfaces (.cust-name / .rep-3pl-name).
     document.querySelectorAll('.cust-name').forEach(e => e.textContent = state.customer);
     document.querySelectorAll('.rep-3pl-name').forEach(e => e.textContent = state.threePL);
   }
@@ -129,7 +139,6 @@
   let activeTile = null;
   document.querySelectorAll('.upload-tile').forEach(t => {
     t.addEventListener('click', (e) => {
-      if (t.classList.contains('na')) return;
       activeTile = t;
       document.getElementById('real-file-picker').click();
     });
@@ -151,7 +160,6 @@
   // Demo helper: pretend the tiles are loaded with their pre-canned file lists
   function loadAll() {
     document.querySelectorAll('.upload-tile').forEach(t => {
-      if (t.classList.contains('na')) return;
       t.classList.add('loaded');
       const files = JSON.parse(t.dataset.files || '[]');
       t.querySelector('.status').textContent = `✓ ${files.length} file${files.length > 1 ? 's' : ''}`;
@@ -162,30 +170,14 @@
     refreshSubmit();
   }
 
-  // N/A toggle
-  function toggleNA(cb) {
-    const tile = cb.closest('.upload-tile');
-    if (cb.checked) {
-      tile.classList.add('na');
-      tile.classList.remove('loaded');
-      tile.querySelector('.status').textContent = 'Not available';
-    } else {
-      tile.classList.remove('na');
-      tile.querySelector('.status').textContent = tile.dataset.type.includes('rates') || tile.dataset.type === 'other' ? 'Choose files' : 'Choose file';
-    }
-    refreshSubmit();
-  }
-
   function refreshSubmit() {
     const loaded = document.querySelectorAll('.upload-tile.loaded').length;
-    const na = document.querySelectorAll('.upload-tile.na').length;
     const total = document.querySelectorAll('.upload-tile').length;
-    const accounted = loaded + na;
     const btn = document.getElementById('submit-btn');
     btn.disabled = loaded < 2;
     btn.innerHTML = loaded < 2
       ? `Upload at least 2 categories (${loaded}/${total}) →`
-      : `Submit for review — ${loaded} loaded${na ? ', ' + na + ' N/A' : ''} →`;
+      : `Submit for review — ${loaded} loaded →`;
   }
 
   // ===== Submit: simulate upload progress =====
@@ -239,6 +231,8 @@
             if (done === allFiles.length) {
               setTimeout(() => {
                 modal.classList.remove('show');
+                // Initial customer submission -> create Version 1 and enter the workspace (State 2).
+                if (typeof onInitialSubmit === 'function') onInitialSubmit();
                 goTo(2);
               }, 500);
             }

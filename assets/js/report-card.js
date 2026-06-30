@@ -38,17 +38,9 @@
     { file: 'Product / SKU Master', cat: 'Reference', status: 'optional' },
   ];
 
-  // The client Report Card is the SAME customer experience as the manager's
-  // Customer Package / preview — rendered read-only from the shared package.
-  function renderReportCard() {
-    const root = document.getElementById('rc-doc'); if (!root) return;
-    if (typeof customerExperienceHTML !== 'function' || typeof buildDraftPackage !== 'function') return;
-    // Prefer the official sent snapshot; fall back to the live draft so the demo
-    // page stays populated before anything has been sent.
-    const sent = (typeof sentPackage !== 'undefined') ? sentPackage : null;
-    const pkg = sent || buildDraftPackage();
-    root.innerHTML = customerExperienceHTML(pkg, { audience: 'client', editable: false, live: !!sent });
-  }
-
-  document.addEventListener('DOMContentLoaded', renderReportCard);
-  document.querySelectorAll('.step-btn[data-step="4"]').forEach(b => b.addEventListener('click', () => setTimeout(renderReportCard, 0)));
+  // The customer-facing surface is now the Customer Intake Workspace (page-2),
+  // rendered by renderCustomerWorkspace() in customer-workspace.js. RC_GROUPS /
+  // RC_FILES above remain the analysis + file data source folded into the shared
+  // package by buildDraftPackage(). The legacy standalone Report Card page has
+  // been merged into the workspace; renderReportCard() is defined there as a thin
+  // alias so existing callers keep working.

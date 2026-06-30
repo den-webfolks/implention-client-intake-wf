@@ -26,11 +26,12 @@
   };
   const IS_META = {
     reviewing:  { lbl: 'Reviewing',                cls: 'is-reviewing' },
-    ready:      { lbl: 'Ready to Send Requests',   cls: 'is-ready' },
+    ready:      { lbl: 'Ready to Send',            cls: 'is-ready' },
     awaiting:   { lbl: 'Awaiting Customer Update',  cls: 'is-awaiting' },
     onboarding: { lbl: 'Ready for Onboarding',     cls: 'is-onboarding' },
   };
   let intakeSent = false;
+  let intakeFinal = false;   // a final confirmation package (zero requests) has been sent
   let responsesIn = false;
 
   function requestsFromAnalysis(id) {
@@ -99,8 +100,9 @@
     const reviewed = cards.filter(c => statusOf(c) === 'reviewed').length;
     const notReviewed = cards.length - reviewed;
     const openN = openRequests();
-    if (intakeSent) return 'awaiting';
-    if (openN === 0 && notReviewed === 0) return 'onboarding';
+    if (intakeFinal) return 'onboarding';        // final confirmation sent
+    if (intakeSent) return 'awaiting';           // request package sent
+    if (notReviewed === 0) return 'ready';       // all reviewed -> ready to send (requests or final confirmation)
     if (openN > 0) return 'ready';
     return 'reviewing';
   }
@@ -118,11 +120,21 @@
     const stt = computeIntakeStatus();
     const isb = document.getElementById('intake-status');
     if (isb) { isb.className = 'intake-status ' + IS_META[stt].cls; isb.textContent = IS_META[stt].lbl; }
-    const canSend = openN > 0 && notReviewed === 0;
+    // Send is gated on ALL analyses reviewed. Requests are optional: zero requests
+    // means a final confirmation can be sent instead of a request package.
+    const canSend = notReviewed === 0;
     const sb = document.getElementById('send-close-btn');
-    if (sb) { if (intakeSent) { sb.disabled = true; sb.textContent = 'Package sent \u00b7 awaiting update'; } else { sb.disabled = !canSend; sb.textContent = (openN > 0 && notReviewed > 0) ? 'Review all analyses to continue' : 'Review Customer Package'; } }
+    if (sb) {
+      if (intakeFinal) { sb.disabled = true; sb.textContent = 'Onboarding confirmed'; }
+      else if (intakeSent) { sb.disabled = true; sb.textContent = 'Package sent \u00b7 awaiting update'; }
+      else { sb.disabled = !canSend; sb.textContent = !canSend ? 'Review all analyses to continue' : (openN > 0 ? 'Review Customer Package' : 'Send final confirmation'); }
+    }
     const lu = document.getElementById('load-update-btn'); if (lu) { lu.style.display = responsesIn ? 'inline-flex' : 'none'; lu.textContent = 'Run new analysis \u2192'; }
-    const sc = document.getElementById('send-client-btn'); if (sc) { sc.disabled = intakeSent || !canSend; sc.textContent = intakeSent ? 'Package sent' : 'Review Customer Package'; }
+    const sc = document.getElementById('send-client-btn');
+    if (sc) {
+      sc.disabled = intakeSent || intakeFinal || !canSend;
+      sc.textContent = (intakeSent || intakeFinal) ? 'Package sent' : (openN > 0 ? 'Review Customer Package' : 'Send final confirmation');
+    }
     renderReqMetrics(); applyAwaiting();
   }
 
@@ -192,10 +204,10 @@
 
   // Entry point for the primary CTA "Review Customer Package".
   function openPackageReview() {
-    if (intakeSent) { if (typeof showToast === 'function') showToast('A package is already awaiting customer updates'); return; }
-    if (!requests.length) { if (typeof showToast === 'function') showToast('Add at least one request before preparing the package'); return; }
+    if (intakeSent || intakeFinal) { if (typeof showToast === 'function') showToast('A package has already been sent for this version'); return; }
     const notReviewed = [...document.querySelectorAll('#page-3 .acard[data-weight]')].filter(c => statusOf(c) === 'not').length;
     if (notReviewed > 0) { if (typeof showToast === 'function') showToast('Mark every analysis reviewed before preparing the package'); return; }
+    // Zero requests is allowed — that sends a final confirmation (Ready for Onboarding).
     if (!packageDraft.exec) packageDraft.exec = DEFAULT_EXEC;
     renderPackageReview();
     const ov = document.getElementById('package-review'); if (ov) ov.classList.add('show');
@@ -213,11 +225,21 @@
   function renderPackageReview() {
     const root = document.getElementById('pkg-body'); if (!root) return;
     const p = buildDraftPackage();
-    root.innerHTML = customerExperienceHTML(p, { audience: 'manager', editable: true, live: false })
+    const isFinal = !requests.length;
+    const finalBanner = isFinal
+      ? '<div class="pkg-final-banner"><b>Final confirmation \u2014 no requests.</b> Sending this tells ' + esc(p.customer)
+        + ' their intake is complete and moves the status to <b>Ready for Onboarding</b>. Add a request in the Review tab if more is needed.</div>'
+      : '';
+    root.innerHTML = finalBanner
+      + customerExperienceHTML(p, { audience: 'manager', editable: true, live: false })
       + '<div class="pkg-preview-row">'
       + '<button class="btn secondary" onclick="previewCustomerExperience()">View customer experience \u2197</button>'
       + '<span class="pkg-preview-help">See the exact page ' + esc(p.customer) + ' will receive before sending.</span>'
       + '</div>';
+    const sendBtn = document.getElementById('pkg-send-btn');
+    if (sendBtn) sendBtn.textContent = isFinal ? 'Send final confirmation' : 'Send to Customer';
+    const barTitle = document.querySelector('#package-review .pkg-bar-title');
+    if (barTitle) barTitle.textContent = isFinal ? 'Final confirmation before sending' : 'Final review before sending';
   }
 
   // Manager preview = the exact client Report Card, read-only, from the draft.
@@ -233,19 +255,29 @@
   function sendPackage() {
     const p = buildDraftPackage();
     const d = p.date;
+    const isFinal = !requests.length;
     requests.forEach(r => {
       if (!r.sent) { r.sent = true; r.batch = 'original'; r.sentDate = d; if (!r.respStatus) r.respStatus = 'Pending'; if (r.respFile === undefined) r.respFile = null; r.lastUpdated = d; }
     });
     // Immutable snapshot \u2014 the official customer communication for this version.
     sentPackage = JSON.parse(JSON.stringify(p));
     sentPackage.sentDate = d;
-    intakeSent = true;
+    sentPackage.kind = isFinal ? 'final' : 'requests';
+    sentPackage.custVer = (typeof cwVer !== 'undefined' ? cwVer : 1);
+    if (isFinal) { intakeFinal = true; intakeSent = false; }
+    else { intakeSent = true; }
     refreshAll();
     renderResponse();
-    if (typeof renderReportCard === 'function') renderReportCard();
+    // Drive the customer-facing workspace from the sent snapshot.
+    if (typeof cwOnPackageSent === 'function') cwOnPackageSent(isFinal ? 'final' : 'requests');
     closePackageReview();
-    switchVTab('response');
-    if (typeof showToast === 'function') showToast('Package sent to ' + p.customer + ' \u00b7 ' + p.requests.length + ' request' + (p.requests.length !== 1 ? 's' : '') + ' \u00b7 status \u2192 Awaiting Customer Updates');
+    if (isFinal) {
+      switchVTab('customer');
+      if (typeof showToast === 'function') showToast('Final confirmation sent to ' + p.customer + ' \u00b7 status \u2192 Ready for Onboarding');
+    } else {
+      switchVTab('response');
+      if (typeof showToast === 'function') showToast('Package sent to ' + p.customer + ' \u00b7 ' + p.requests.length + ' request' + (p.requests.length !== 1 ? 's' : '') + ' \u00b7 status \u2192 Awaiting Customer Updates');
+    }
   }
 
   function confirmRunNewAnalysis() { const m = document.getElementById('newanalysis-modal'); if (m) m.classList.add('show'); }
@@ -271,10 +303,10 @@
           const tgt = fileByName(r.targetFile);
           const newName = requestedFileName(r);
           if (tgt && tgt.status === 'active') { tgt.status = 'replaced'; tgt.replacedBy = newName; }
-          if (!fileByName(newName)) FILES.push({ name: newName, type: tgt ? tgt.type : 'File', cat: tgt ? tgt.cat : 'Provided', status: 'active', introduced: 'V5', replaces: r.targetFile });
+          if (!fileByName(newName)) FILES.push({ name: newName, type: tgt ? tgt.type : 'File', cat: tgt ? tgt.cat : 'Parcel', status: 'active', introduced: 'V5', replaces: r.targetFile });
         } else if (r.reqType === 'upload') {
           const newName = requestedFileName(r);
-          if (!fileByName(newName)) FILES.push({ name: newName, type: 'File', cat: 'Provided', status: 'active', introduced: 'V5' });
+          if (!fileByName(newName)) FILES.push({ name: newName, type: 'File', cat: 'Parcel', status: 'active', introduced: 'V5' });
         }
       });
     }
@@ -293,14 +325,17 @@
     document.querySelectorAll('#page-3 .vtab-panel').forEach(pn => pn.classList.remove('active'));
     const panel = document.getElementById('tab-' + name); if (panel) panel.classList.add('active');
     if (name === 'response') renderResponse();
+    if (name === 'customer' && typeof renderCustomerViewTab === 'function') renderCustomerViewTab();
     const tabs = document.getElementById('vtabs'); if (tabs) tabs.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   function applyAwaiting() {
+    // The bucket / create-request actions are locked once a package (requests OR final) is sent.
+    const locked = intakeSent || intakeFinal;
     const wrap = document.querySelector('#page-3 .container.wide');
-    if (wrap) wrap.classList.toggle('awaiting', intakeSent);
+    if (wrap) wrap.classList.toggle('awaiting', locked);
     const ab = document.getElementById('await-banner'); if (ab) ab.style.display = intakeSent ? 'flex' : 'none';
     const addBtn = document.querySelector('.ca-add');
-    if (addBtn) { addBtn.style.display = intakeSent ? 'none' : ''; addBtn.classList.remove('supp'); }
+    if (addBtn) { addBtn.style.display = locked ? 'none' : ''; addBtn.classList.remove('supp'); }
     const rd = document.querySelector('#page-3 .vtab[data-vtab="response"]'); if (rd) rd.classList.toggle('has-data', requests.some(r => r.sent));
     // The bucket is collapsible at any time. Sending the package auto-collapses it ONCE
     // as a convenience; after that the user controls it freely.
@@ -405,17 +440,18 @@
     const handled = sent.some(r => isHandled(r));
     const cust = esc(typeof state !== 'undefined' ? state.customer : 'the customer');
     const pkg = sentPackage || {};
-    const statusLbl = intakeSent ? 'Awaiting Customer Updates' : 'In review';
+    const statusLbl = handled ? 'Customer Updated' : (intakeSent ? 'Awaiting Customer Updates' : 'In review');
     const head = '<div class="resp-head"><div><h2 class="resp-h">Request tracking</h2>'
       + '<p class="resp-sub">Track how ' + cust + ' is progressing on the sent package.</p></div>'
       + '<div class="resp-head-actions">'
-      + '<button class="btn secondary sm" onclick="openCustomerPage()">View customer page ↗</button>'
-      + (handled ? '' : '<button class="btn secondary sm" onclick="simulateResponses()">Simulate customer response</button>')
+      + '<button class="btn secondary sm" onclick="openCustomerPage()">Open customer workspace ↗</button>'
+      + '<button class="btn secondary sm" onclick="switchVTab(\'customer\')">Customer view</button>'
       + '</div></div>';
+    // The customer completes requests and submits in their workspace; submitting creates
+    // the next version and reopens the review automatically \u2014 no manager "run analysis" step.
     const cta = handled
-      ? '<div class="resp-cta"><div><b>' + cust + ' has responded.</b> Review the progress below, then run a new analysis to fold the updated files into a fresh review cycle.</div>'
-        + '<button class="btn sm" onclick="confirmRunNewAnalysis()">Run new analysis \u2192</button></div>'
-      : '';
+      ? '<div class="resp-cta"><div><b>' + cust + ' submitted their updates.</b> A new version was created and the analyses have reopened \u2014 head to the <a href="#" onclick="switchVTab(\'review\');return false;">Review</a> tab to review the new submission.</div></div>'
+      : '<div class="resp-cta resp-cta-wait"><div><b>Awaiting ' + cust + '.</b> They\u2019re completing the requests in their Customer Workspace. Progress appears below as they upload files and respond.</div></div>';
     // Request Package Summary
     const summary = '<div class="rt-summary">'
       + '<div class="rts"><span class="l">Package Sent</span><span class="v">' + esc(sent[0].sentDate || pkg.sentDate || '\u2014') + '</span></div>'
@@ -567,8 +603,8 @@
   // Replaces the old Customer View tab: a button now jumps to the Report Card page,
   // which renders the same shared customer experience from the latest sent package.
   function openCustomerPage() {
-    if (typeof goTo === 'function') goTo(4);
-    if (typeof renderReportCard === 'function') renderReportCard();
+    if (typeof goTo === 'function') goTo(2);
+    if (typeof renderCustomerWorkspace === 'function') renderCustomerWorkspace();
   }
   function addAnalysisNote(ev) { ev.stopPropagation(); showToast('Internal note added to this analysis'); }
 
@@ -696,7 +732,7 @@
     document.getElementById('rs-low').textContent = cnt('low');
     document.getElementById('ca-count').textContent = n;
     const _io = document.getElementById('ivm-open'); if (_io) _io.textContent = n;
-    { const _nr = [...document.querySelectorAll('#page-3 .acard[data-weight]')].filter(c => c.dataset.reviewed !== '1').length; document.getElementById('send-client-btn').disabled = n === 0 || _nr > 0 || (typeof intakeSent !== 'undefined' && intakeSent); }
+    { const _nr = [...document.querySelectorAll('#page-3 .acard[data-weight]')].filter(c => c.dataset.reviewed !== '1').length; document.getElementById('send-client-btn').disabled = _nr > 0 || (typeof intakeSent !== 'undefined' && intakeSent) || (typeof intakeFinal !== 'undefined' && intakeFinal); }
     if (typeof renderFiles === 'function') renderFiles();
     const byA = {};
     requests.forEach(r => { if (r.analysis) byA[r.analysis] = (byA[r.analysis] || 0) + 1; });
@@ -822,13 +858,13 @@
 
   // ===== File lifecycle model (audit trail across intake versions) =====
   let FILES = [
-    { name: 'UPS_Rate_Card.xlsx',      type: 'Rate Card', cat: 'Pricing', status: 'active',   introduced: 'V2' },
-    { name: 'FedEx_Rate_Card.xlsx',    type: 'Rate Card', cat: 'Pricing', status: 'active',   introduced: 'V2' },
-    { name: 'USPS_Priority.pdf',       type: 'Rate Card', cat: 'Pricing', status: 'active',   introduced: 'V3' },
-    { name: 'Invoice_Export_Jan.csv',  type: 'Invoice',   cat: 'Billing', status: 'active',   introduced: 'V4' },
-    { name: 'Master_Carrier_List.csv', type: 'Reference', cat: 'Catalog', status: 'active',   introduced: 'V2' },
-    { name: 'DHL_Rate_Card.xlsx',      type: 'Rate Card', cat: 'Pricing', status: 'replaced', introduced: 'V2', replacedBy: 'DHL_Rate_Card_v2.xlsx' },
-    { name: 'DHL_Rate_Card_v2.xlsx',   type: 'Rate Card', cat: 'Pricing', status: 'active',   introduced: 'V4', replaces: 'DHL_Rate_Card.xlsx' },
+    { name: 'UPS_Rate_Card.xlsx',      type: 'Rate Card', cat: 'Parcel',                 status: 'active',   introduced: 'V2' },
+    { name: 'FedEx_Rate_Card.xlsx',    type: 'Rate Card', cat: 'Parcel',                 status: 'active',   introduced: 'V2' },
+    { name: 'USPS_Priority.pdf',       type: 'Rate Card', cat: 'Parcel',                 status: 'active',   introduced: 'V3' },
+    { name: 'Invoice_Export_Jan.csv',  type: 'Invoice',   cat: 'Parcel',                 status: 'active',   introduced: 'V4' },
+    { name: 'Master_Carrier_List.csv', type: 'Reference', cat: 'Contracts & Reference',  status: 'active',   introduced: 'V2' },
+    { name: 'DHL_Rate_Card.xlsx',      type: 'Rate Card', cat: 'Parcel',                 status: 'replaced', introduced: 'V2', replacedBy: 'DHL_Rate_Card_v2.xlsx' },
+    { name: 'DHL_Rate_Card_v2.xlsx',   type: 'Rate Card', cat: 'Parcel',                 status: 'active',   introduced: 'V4', replaces: 'DHL_Rate_Card.xlsx' },
   ];
   const FST = { active: { lbl: 'Active', cls: 'fst-active' }, replaced: { lbl: 'Replaced', cls: 'fst-replaced' }, ignored: { lbl: 'Ignored', cls: 'fst-ignored' }, missing: { lbl: 'Missing', cls: 'fst-missing' } };
   function activeFileNames() { return FILES.filter(f => f.status === 'active').map(f => f.name); }
